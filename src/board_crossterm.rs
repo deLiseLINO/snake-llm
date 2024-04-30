@@ -1,12 +1,11 @@
+use crate::game::Board;
 use crate::point::Point;
 use crate::snake::Snake;
-use crate::{direction, events};
+use std::cell::RefCell;
+use std::iter;
+use std::rc::Rc;
 
-use std::{
-    io::{stdout, Stdout},
-    process::Command,
-    thread,
-};
+use std::io::{stdout, Stdout};
 
 use crossterm::{
     cursor, event, execute,
@@ -14,52 +13,15 @@ use crossterm::{
     terminal, ExecutableCommand,
 };
 
-pub struct Board {
+pub struct BoardCrossterm {
     stdout: Stdout,
     width: u16,
     height: u16,
     food: Point,
-    snake: Snake,
+    snake: Rc<RefCell<Snake>>,
 }
 
-impl Board {
-    pub fn new(witdh: u16, height: u16) -> Self {
-        Self {
-            stdout: stdout(),
-            width: witdh,
-            height: height,
-            food: Point::new(15, 5),
-            snake: Snake::new(witdh / 2, height / 2),
-        }
-    }
-
-    pub fn start(&mut self) {
-        self.prepare_ui();
-        let mut done = false;
-        while !done {
-            self.snake.moving();
-            self.render();
-            if let Some(command) = events::get_command() {
-                match command {
-                    events::Command::Turn(direction) => self.snake.change_direction(direction),
-                    events::Command::Quit => done = true,
-                }
-            }
-            thread::sleep_ms(100)
-        }
-    }
-
-    fn prepare_ui(&mut self) {
-        terminal::enable_raw_mode().unwrap();
-        self.stdout
-            // .execute(terminal::SetSize(self.width + 10, self.height + 10))
-            // .unwrap()
-            .execute(terminal::Clear(terminal::ClearType::All))
-            .unwrap()
-            .execute(cursor::Hide)
-            .unwrap();
-    }
-
+impl Board for BoardCrossterm {
     fn render(&mut self) {
         self.draw_background();
         self.draw_borders();
@@ -67,8 +29,33 @@ impl Board {
         self.draw_snake();
     }
 
+    fn prepare_ui(&mut self) {
+        terminal::enable_raw_mode().unwrap();
+        self.stdout
+            .execute(terminal::Clear(terminal::ClearType::All))
+            .unwrap()
+            .execute(cursor::Hide)
+            .unwrap();
+    }
+
+    fn clean_up(&mut self) {
+        terminal::disable_raw_mode().unwrap();
+    }
+}
+
+impl BoardCrossterm {
+    pub fn new(witdh: u16, height: u16, snake: Rc<RefCell<Snake>>) -> Self {
+        Self {
+            stdout: stdout(),
+            width: witdh,
+            height: height,
+            food: Point::new(15, 5),
+            snake: snake,
+        }
+    }
+
     fn draw_snake(&mut self) {
-        let list = self.snake.get_list();
+        let list = self.snake.borrow().get_list();
         let iter = list.into_iter();
         // self.stdout
         //     .execute(style::SetBackgroundColor(style::Color::Green))
@@ -76,7 +63,7 @@ impl Board {
 
         for point in iter {
             self.stdout
-                .execute(cursor::MoveTo(point.x, point.y))
+                .execute(cursor::MoveTo(point.x as u16, point.y as u16))
                 .unwrap()
                 .execute(style::Print("O"))
                 .unwrap();
@@ -132,7 +119,7 @@ impl Board {
             .execute(style::SetForegroundColor(style::Color::White))
             .unwrap();
         self.stdout
-            .execute(cursor::MoveTo(self.food.x, self.food.y))
+            .execute(cursor::MoveTo(self.food.x as u16, self.food.y as u16))
             .unwrap()
             .execute(style::Print("•"))
             .unwrap();

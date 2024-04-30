@@ -1,6 +1,7 @@
 use rand::Rng;
 
 use crate::direction::Direction;
+// use crate::game::Snake as SnakeT;
 use crate::point::Point;
 use std::collections::LinkedList;
 
@@ -10,7 +11,7 @@ pub struct Snake {
 }
 
 impl Snake {
-    pub fn new(start_x: u16, start_y: u16) -> Self {
+    pub fn new(start_x: i32, start_y: i32) -> Self {
         Self {
             list: LinkedList::from([Point {
                 x: start_x,
@@ -30,8 +31,8 @@ impl Snake {
         let mut new_x = front.x;
         let mut new_y = front.y;
         match self.direction {
-            Direction::Up => new_y -= 1,
-            Direction::Down => new_y += 1,
+            Direction::Up => new_y += 1,
+            Direction::Down => new_y -= 1,
             Direction::Left => new_x -= 1,
             Direction::Right => new_x += 1,
         };
@@ -39,22 +40,16 @@ impl Snake {
 
         self.list.push_front(new_point);
 
-        if self.list.len() > 5 {
+        if self.list.len() > 150 {
             self.list.pop_back();
         }
-    }
-
-    pub fn get_list(&self) -> LinkedList<Point> {
-        self.list.clone()
     }
 
     pub fn change_direction(&mut self, direction: Direction) {
         self.direction = direction;
     }
 
-    // pub fn print_list(&self) {
-    //     for point in self.list.clone().into_iter() {
-    //         println!("{}, {}", point.x, point.y)
-    //     }
-    // }
+    pub fn get_list(&self) -> LinkedList<Point> {
+        self.list.clone()
+    }
 }
