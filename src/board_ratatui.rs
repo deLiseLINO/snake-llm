@@ -12,6 +12,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
+use rand::Rng;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -19,7 +20,7 @@ use ratatui::{
     symbols::Marker,
     widgets::{
         self,
-        canvas::{Canvas, Map, MapResolution, Painter, Shape},
+        canvas::{Canvas, Map, MapResolution, Painter, Points, Shape},
         Block, Borders, Paragraph, Widget,
     },
     Frame, Terminal,
@@ -31,6 +32,7 @@ pub struct BoardRataTUI {
     terminal: Rc<RefCell<Terminal<CrosstermBackend<io::Stdout>>>>,
     width: u16,
     height: u16,
+    score: u16,
     food: Point,
     snake: Rc<RefCell<Snake>>,
 }
@@ -52,6 +54,25 @@ impl Board for BoardRataTUI {
         disable_raw_mode().unwrap();
         stdout().execute(LeaveAlternateScreen).unwrap();
     }
+
+    fn get_food(&self) -> Point {
+        self.food.clone()
+    }
+
+    fn change_food_position(&mut self) {
+        self.food = Point::new(
+            rand::thread_rng().gen_range(0..self.width) as i32,
+            rand::thread_rng().gen_range(0..self.height) as i32,
+        );
+    }
+
+    fn increment_score(&mut self) {
+        self.score += 1;
+    }
+
+    fn get_size(&self) -> (&u16, &u16) {
+        (&self.width, &self.height)
+    }
 }
 
 impl BoardRataTUI {
@@ -62,7 +83,8 @@ impl BoardRataTUI {
             )),
             width,
             height,
-            food: Point::new(0, 0),
+            score: 0,
+            food: Point::new(100, 100),
             snake,
         }
     }
@@ -78,7 +100,7 @@ impl BoardRataTUI {
 
         frame.render_widget(
             Block::new()
-                .title("Score: 0")
+                .title(format!("Score: {}", self.score))
                 .title_alignment(Alignment::Center),
             main_layout[1],
         );
@@ -87,7 +109,8 @@ impl BoardRataTUI {
     }
 
     fn map_canvas(&self) -> impl Widget + 'static {
-        let snake_shape = SnakeShape::new(self.snake.borrow_mut().get_list());
+        let snake_shape: SnakeShape = SnakeShape::new(self.snake.borrow_mut().get_list());
+        let food = self.food.clone();
 
         Canvas::default()
             .block(Block::default().borders(Borders::ALL).title("Snake game"))
@@ -98,9 +121,13 @@ impl BoardRataTUI {
                 //     resolution: MapResolution::Low,
                 // });
                 ctx.draw(&snake_shape);
+                ctx.draw(&Points {
+                    coords: &[(food.x as f64, food.y as f64)],
+                    color: Color::Green,
+                })
             })
-            .x_bounds([-190.0, 190.0])
-            .y_bounds([-100.0, 100.0])
+            .x_bounds([0.0, self.width as f64])
+            .y_bounds([0.0, self.height as f64])
     }
 }
 
@@ -111,40 +138,12 @@ fn ui(frame: &mut Frame) {
     )
     .split(frame.size());
 
-    // frame.render_widget(
-    //     Block::new()
-    //         .borders(Borders::ALL)
-    //         .title("Snake game")
-    //         .title_alignment(Alignment::Center),
-    //     main_layout[0],
-    // );
-
     frame.render_widget(
         Block::new()
             .title("Score: 0")
             .title_alignment(Alignment::Center),
         main_layout[1],
     );
-
-    // frame.render_widget(map_canvas(), main_layout[0])
-    // frame.render_widget(
-    //     Block::new().borders(Borders::TOP).title("Status Bar"),
-    //     main_layout[2],
-    // );
-
-    // let inner_layout = Layout::new(
-    //     Direction::Horizontal,
-    //     [Constraint::Percentage(50), Constraint::Percentage(50)],
-    // )
-    // .split(main_layout[1]);
-    // frame.render_widget(
-    //     Block::default().borders(Borders::ALL).title("Left"),
-    //     inner_layout[0],
-    // );
-    // frame.render_widget(
-    //     Block::default().borders(Borders::ALL).title("Right"),
-    //     inner_layout[1],
-    // );
 }
 
 struct SnakeShape {

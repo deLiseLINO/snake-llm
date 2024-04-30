@@ -26,7 +26,7 @@ impl Snake {
         }
     }
 
-    pub fn moving(&mut self) {
+    pub fn moving(&mut self, growing: bool) {
         let front = self.list.front().unwrap();
         let mut new_x = front.x;
         let mut new_y = front.y;
@@ -40,7 +40,11 @@ impl Snake {
 
         self.list.push_front(new_point);
 
-        if self.list.len() > 150 {
+        if growing {
+            return;
+        }
+
+        if self.list.len() > 20 {
             self.list.pop_back();
         }
     }
@@ -51,5 +55,9 @@ impl Snake {
 
     pub fn get_list(&self) -> LinkedList<Point> {
         self.list.clone()
+    }
+
+    pub fn get_head(&self) -> Point {
+        self.list.front().unwrap().clone()
     }
 }
