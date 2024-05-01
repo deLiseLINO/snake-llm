@@ -17,11 +17,11 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
-    symbols::Marker,
+    symbols::{self, Marker},
     widgets::{
         self,
         canvas::{Canvas, Map, MapResolution, Painter, Points, Shape},
-        Block, Borders, Paragraph, Widget,
+        Block, Borders, Padding, Paragraph, Widget,
     },
     Frame, Terminal,
 };
@@ -44,10 +44,8 @@ impl Board for BoardRataTUI {
     }
 
     fn render(&mut self) {
-        self.terminal
-            .borrow_mut()
-            .draw(|frame| self.ui(frame))
-            .unwrap();
+        let terminal = Rc::clone(&self.terminal);
+        terminal.borrow_mut().draw(|frame| self.ui(frame)).unwrap();
     }
 
     fn clean_up(&mut self) {
@@ -84,19 +82,25 @@ impl BoardRataTUI {
             width,
             height,
             score: 0,
-            food: Point::new(100, 100),
+            food: Point::new(20, 20),
             snake,
         }
     }
 
-    fn ui(&self, frame: &mut Frame) {
-        let s = frame.size();
-        // dbg!(s);
+    fn set_size(&mut self, width: u16, height: u16) {
+        self.width = (width as f64 * 0.98) as u16;
+        self.height = ((height * 2) as f64 * 0.94) as u16;
+    }
+
+    fn ui(&mut self, frame: &mut Frame) {
+        let frame_size = frame.size();
         let main_layout = Layout::new(
             Direction::Vertical,
             [Constraint::Min(0), Constraint::Length(1)],
         )
-        .split(s);
+        .split(frame_size);
+
+        self.set_size(main_layout[0].width, main_layout[0].height);
 
         frame.render_widget(
             Block::new()
@@ -113,13 +117,14 @@ impl BoardRataTUI {
         let food = self.food.clone();
 
         Canvas::default()
-            .block(Block::default().borders(Borders::ALL).title("Snake game"))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_set(symbols::border::ROUNDED)
+                    .title("Snake game"),
+            )
             .marker(Marker::HalfBlock)
             .paint(move |ctx| {
-                // ctx.draw(&Map {
-                //     color: Color::Cyan,
-                //     resolution: MapResolution::Low,
-                // });
                 ctx.draw(&snake_shape);
                 ctx.draw(&Points {
                     coords: &[(food.x as f64, food.y as f64)],
@@ -129,21 +134,6 @@ impl BoardRataTUI {
             .x_bounds([0.0, self.width as f64])
             .y_bounds([0.0, self.height as f64])
     }
-}
-
-fn ui(frame: &mut Frame) {
-    let main_layout = Layout::new(
-        Direction::Vertical,
-        [Constraint::Min(0), Constraint::Length(1)],
-    )
-    .split(frame.size());
-
-    frame.render_widget(
-        Block::new()
-            .title("Score: 0")
-            .title_alignment(Alignment::Center),
-        main_layout[1],
-    );
 }
 
 struct SnakeShape {
@@ -164,15 +154,5 @@ impl Shape for SnakeShape {
                 painter.paint(x, y, Color::LightMagenta)
             }
         }
-        // let mut i = -20;
-        // while i < 20 {
-        //     if let Some((x, y)) = painter.get_point(i as f64, 0 as f64) {
-        //         painter.paint(x, y, Color::LightMagenta)
-        //     }
-        //     if let Some((x, y)) = painter.get_point(0 as f64, i as f64) {
-        //         painter.paint(x, y, Color::LightMagenta)
-        //     }
-        //     i += 1;
-        // }
     }
 }
