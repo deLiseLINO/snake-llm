@@ -5,18 +5,16 @@ use crate::direction::Direction;
 use crate::point::Point;
 use std::collections::LinkedList;
 
+#[derive(Clone)]
 pub struct Snake {
     list: LinkedList<Point>,
     direction: Direction,
 }
 
 impl Snake {
-    pub fn new(start_x: i32, start_y: i32) -> Self {
+    pub fn new() -> Self {
         Self {
-            list: LinkedList::from([Point {
-                x: start_x,
-                y: start_y,
-            }]),
+            list: LinkedList::new(),
             direction: match rand::thread_rng().gen_range(0..4) {
                 0 => Direction::Up,
                 1 => Direction::Down,
@@ -24,6 +22,10 @@ impl Snake {
                 _ => Direction::Right,
             },
         }
+    }
+
+    pub fn set_head(&mut self, point: Point) {
+        self.list.push_front(point);
     }
 
     pub fn moving(&mut self, growing: bool) {
@@ -50,7 +52,9 @@ impl Snake {
     }
 
     pub fn change_direction(&mut self, direction: Direction) {
-        self.direction = direction;
+        if direction != self.direction.opposite() {
+            self.direction = direction;
+        }
     }
 
     pub fn get_list(&self) -> LinkedList<Point> {
@@ -59,5 +63,9 @@ impl Snake {
 
     pub fn get_head(&self) -> Point {
         self.list.front().unwrap().clone()
+    }
+
+    pub fn _get_direction(&mut self) -> Direction {
+        self.direction.clone()
     }
 }

@@ -1,3 +1,5 @@
+use rand::Rng;
+
 #[derive(Clone, Debug)]
 pub struct Point {
     pub x: i32,
@@ -7,5 +9,10 @@ pub struct Point {
 impl Point {
     pub fn new(x: i32, y: i32) -> Self {
         Self { x, y }
+    }
+
+    pub fn new_random(width: i32, height: i32) -> Self {
+        let mut rng = rand::thread_rng();
+        Self::new(rng.gen_range(0..width), rng.gen_range(0..height))
     }
 }

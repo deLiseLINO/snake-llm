@@ -1,64 +1,139 @@
+use rand::Rng;
+
+use crate::client::{models, GroqClient};
 use crate::direction::Direction;
-use crate::events;
+use crate::events::Command;
 use crate::point::Point;
 use crate::snake::Snake;
-use std::cell::RefCell;
-use std::option::Iter;
-use std::rc::Rc;
-use std::thread;
-use std::time::Instant;
+use crate::{client, events};
 
 pub trait Board {
     fn prepare_ui(&mut self);
-    fn render(&mut self);
+    fn render(&mut self, snake: Snake, food: Point, score: u16);
     fn clean_up(&mut self);
-    fn get_food(&self) -> Point;
-    fn change_food_position(&mut self);
-    fn increment_score(&mut self);
+    // fn get_food(&self) -> Point;
+    // fn change_food_position(&mut self);
+    // fn increment_score(&mut self);
     fn get_size(&self) -> (&u16, &u16);
+    fn debug(&mut self, line: String);
 }
 
 pub struct Game {
     board: Box<dyn Board>,
-    snake: Rc<RefCell<Snake>>,
+    snake: Snake,
+    food: Point,
+    score: u16,
+    client: client::GroqClient,
+    commands: Vec<String>,
 }
 
 impl Game {
-    pub fn new(board: Box<dyn Board>, snake: Rc<RefCell<Snake>>) -> Self {
-        Self { board, snake }
+    pub fn new(board: Box<dyn Board>, snake: Snake, client: GroqClient) -> Self {
+        Self {
+            board,
+            snake,
+            food: Point { x: 0, y: 0 },
+            score: 0,
+            client,
+            commands: Vec::new(),
+        }
     }
 
     pub fn start(&mut self) {
         self.board.prepare_ui();
+
+        let (width, height) = self.board.get_size();
+        self.snake
+            .set_head(Point::new_random(*width as i32, *height as i32));
+
         let mut done = false;
         while !done {
-            let growing = self.is_food_eaten();
-            if growing {
-                self.board.change_food_position();
-                self.board.increment_score();
-            }
-
-            if let dead = self.crossed_borders_or_eat_itself() {
-                done = dead;
-            }
-
-            self.board.render();
-            let mut snake = self.snake.borrow_mut();
-            snake.moving(growing);
+            done = self.crossed_borders_or_eat_itself();
+            self.board
+                .render(self.snake.clone(), self.food.clone(), self.score.clone());
+            // let temp = Rc::clone(&self.snake);
+            // let mut snake = &mut self.snake;
             if let Some(command) = events::get_command() {
                 match command {
-                    events::Command::Turn(direction) => snake.change_direction(direction),
-                    events::Command::Quit => done = true,
+                    Command::Turn(direction) => self.snake.change_direction(direction),
+                    Command::Quit => done = true,
                 }
             }
+
+            // if self.commands.len() == 0 {
+            //     let head = self.snake.get_head();
+            //     let direction = self.snake.get_direction();
+            //     self.do_commands_request(head, direction);
+            //     if self.commands.len() == 0 {
+            //         continue;
+            //     }
+            // }
+
+            let growing = self.is_food_eaten();
+            if growing {
+                self.change_food_position();
+                self.increment_score();
+            }
+
+            // if self.commands.len() > 0 {
+            // let command = self.commands.remove(0);
+            // self.snake.change_direction(match command.as_str() {
+            //     "up" => Direction::Up,
+            //     "down" => Direction::Down,
+            //     "left" => Direction::Left,
+            //     "right" => Direction::Right,
+            //     _ => Direction::Down,
+            // });
+            // }
+
+            self.snake.moving(growing);
         }
         self.board.clean_up();
     }
 
+    fn change_food_position(&mut self) {
+        let (width, height) = self.board.get_size();
+        self.food = Point::new(
+            rand::thread_rng().gen_range(0..*width) as i32,
+            rand::thread_rng().gen_range(0..*height) as i32,
+        );
+    }
+
+    fn increment_score(&mut self) {
+        self.score += 1;
+    }
+
+    fn do_commands_request(&mut self, s_head: Point, direction: Direction) {
+        let food = self.food.clone();
+        // let (width, height) = self.board.get_size();
+
+        let commands = self.client.snake_commands(models::InputContent {
+            snake_direction: direction.as_string(),
+            snake_head_x: s_head.x,
+            snake_head_y: s_head.y,
+            food_x: food.x,
+            food_y: food.y,
+        });
+        let res = match commands {
+            Ok(res) => res,
+            Err(e) => {
+                self.debug(e);
+                return;
+            }
+        };
+
+        self.board.debug(format!("{:?}", res.commands));
+
+        for c in res.commands {
+            for _ in 0..c.repeat {
+                self.commands.push(c.command.clone());
+            }
+        }
+    }
+
     fn is_food_eaten(&self) -> bool {
-        let snake = self.snake.borrow();
-        let head = snake.get_head();
-        let food = self.board.get_food();
+        let head = self.snake.get_head();
+        let food = self.food.clone();
         if (head.x, head.y) == (food.x, food.y) {
             return true;
         }
@@ -66,7 +141,7 @@ impl Game {
     }
 
     fn crossed_borders_or_eat_itself(&self) -> bool {
-        let mut snake_iter = self.snake.borrow().get_list().into_iter();
+        let mut snake_iter = self.snake.get_list().into_iter();
         let head = snake_iter.next().unwrap();
         let (width, height) = self.board.get_size();
         for point in snake_iter {
@@ -75,5 +150,9 @@ impl Game {
             }
         }
         head.x < 0 || head.y < 0 || head.x >= *width as i32 || head.y >= *height as i32
+    }
+
+    fn debug(&mut self, line: String) {
+        self.board.debug(line);
     }
 }

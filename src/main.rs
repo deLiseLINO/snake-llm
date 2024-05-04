@@ -1,4 +1,6 @@
-mod board_ratatui;
+mod board;
+mod client;
+mod config;
 mod direction;
 mod events;
 mod game;
@@ -6,16 +8,16 @@ mod point;
 mod snake;
 use snake::Snake;
 
-use crate::board_ratatui::BoardRataTUI;
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::board::BoardTUI;
 
 fn main() {
-    let snake = Rc::new(RefCell::new(Snake::new(40, 25)));
-    // let board = BoardCrossterm::new(100, 50, Rc::clone(&snake));
-    let board = BoardRataTUI::new(190, 100, Rc::clone(&snake));
+    let config = config::parse();
+    let client = client::GroqClient::new(config.groq_client.url, config.groq_client.token);
 
-    let mut game = game::Game::new(Box::new(board), Rc::clone(&snake));
+    let snake = Snake::new();
+    let board = BoardTUI::new();
+
+    let mut game = game::Game::new(Box::new(board), snake, client);
 
     game.start();
 }

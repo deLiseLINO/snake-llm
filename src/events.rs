@@ -1,4 +1,4 @@
-use std::time::{self, Duration};
+use std::time::{self};
 
 use crate::direction::Direction;
 use crossterm::event;
@@ -12,7 +12,7 @@ pub fn get_command() -> Option<Command> {
     let wait_for = time::Duration::from_millis(50);
     let key_event = wait_for_key_event(wait_for)?;
     match key_event.code {
-        event::KeyCode::Up => Some(Command::Turn((Direction::Up))),
+        event::KeyCode::Up => Some(Command::Turn(Direction::Up)),
         event::KeyCode::Down => Some(Command::Turn(Direction::Down)),
         event::KeyCode::Left => Some(Command::Turn(Direction::Left)),
         event::KeyCode::Right => Some(Command::Turn(Direction::Right)),
