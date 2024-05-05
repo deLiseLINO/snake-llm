@@ -23,11 +23,21 @@ struct GroqRequest {
 struct GroqResponse {
     choices: Vec<Choice>,
 }
+
+pub trait ApiClient {
+    fn snake_commands(&mut self, input: InputContent) -> Result<OutputContent, String>;
+}
 pub struct GroqClient {
     client: Client,
     url: String,
     token: String,
     request: GroqRequest,
+}
+
+impl ApiClient for GroqClient {
+    fn snake_commands(&mut self, input: InputContent) -> Result<OutputContent, String> {
+        self.snake_commands(input)
+    }
 }
 
 impl GroqClient {

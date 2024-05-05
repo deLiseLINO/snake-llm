@@ -10,6 +10,7 @@ pub enum GameMod {
     Api(Provider),
 }
 
+#[derive(PartialEq, Eq, Hash)]
 pub enum Provider {
     Groq,
 }

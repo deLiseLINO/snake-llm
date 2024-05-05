@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use rand::Rng;
 use ratatui::symbols::braille;
 
-use crate::client::{models, GroqClient};
+use crate::client::models::InputContent;
+use crate::client::{models, ApiClient, GroqClient};
 use crate::events::Command;
 use crate::models::{Direction, GameMod, GameState, Point, Provider, UIMode};
 use crate::snake::Snake;
@@ -27,21 +30,27 @@ pub struct Game {
     snake: Snake,
     food: Point,
     score: u16,
-    client: client::GroqClient,
+    client: Option<Box<dyn ApiClient>>,
     commands: Vec<String>,
     game_state: GameState,
+    api_providers: HashMap<Provider, Box<dyn ApiClient>>,
 }
 
 impl Game {
-    pub fn new(board: Box<dyn Board>, snake: Snake, client: GroqClient) -> Self {
+    pub fn new(
+        board: Box<dyn Board>,
+        snake: Snake,
+        api_providers: HashMap<Provider, Box<dyn ApiClient>>,
+    ) -> Self {
         Self {
             board,
             snake,
             food: Point::new(0, 0),
             score: 0,
-            client,
+            client: None,
             commands: Vec::new(),
             game_state: GameState::NotStarted,
+            api_providers,
         }
     }
 
@@ -57,9 +66,9 @@ impl Game {
                             self.game_state = GameState::NotStarted;
                             self.board.update_mode(UIMode::Game);
                         }
-                        GameMod::Api(Provider::Groq) => {
+                        GameMod::Api(provider) => {
                             self.game_state = GameState::Running;
-                            self.board.update_mode(UIMode::GameWithDebug)
+                            self.board.update_mode(UIMode::GameWithDebug);
                         }
                     }
                 }
@@ -167,32 +176,32 @@ impl Game {
         self.score = 0;
     }
 
-    fn do_commands_request(&mut self, s_head: Point, direction: Direction) {
-        let food = self.food.clone();
+    // fn do_commands_request(&mut self, s_head: Point, direction: Direction) {
+    //     let food = self.food.clone();
 
-        let commands = self.client.snake_commands(models::InputContent {
-            snake_direction: direction.as_string(),
-            snake_head_x: s_head.x,
-            snake_head_y: s_head.y,
-            food_x: food.x,
-            food_y: food.y,
-        });
-        let res = match commands {
-            Ok(res) => res,
-            Err(e) => {
-                self.debug(e);
-                return;
-            }
-        };
+    //     let commands = self.client.snake_commands(models::InputContent {
+    //         snake_direction: direction.as_string(),
+    //         snake_head_x: s_head.x,
+    //         snake_head_y: s_head.y,
+    //         food_x: food.x,
+    //         food_y: food.y,
+    //     });
+    //     let res = match commands {
+    //         Ok(res) => res,
+    //         Err(e) => {
+    //             self.debug(e);
+    //             return;
+    //         }
+    //     };
 
-        self.board.debug(format!("{:?}", res.commands));
+    //     self.board.debug(format!("{:?}", res.commands));
 
-        for c in res.commands {
-            for _ in 0..c.repeat {
-                self.commands.push(c.command.clone());
-            }
-        }
-    }
+    //     for c in res.commands {
+    //         for _ in 0..c.repeat {
+    //             self.commands.push(c.command.clone());
+    //         }
+    //     }
+    // }
 
     fn is_food_eaten(&self) -> bool {
         let head = self.snake.get_head();
