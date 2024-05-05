@@ -2,20 +2,24 @@ use rand::Rng;
 use ratatui::symbols::braille;
 
 use crate::client::{models, GroqClient};
-use crate::direction::Direction;
 use crate::events::Command;
-use crate::point::Point;
+use crate::models::{Direction, GameMod, GameState, Point, Provider, UIMode};
 use crate::snake::Snake;
-use crate::{client, events};
+use crate::{client, direction, events};
 
 pub trait Board {
     fn prepare_ui(&mut self);
-    fn render(&mut self, snake: Snake, food: Point, score: u16);
+    fn render_game(&mut self, snake: Snake, food: Point, score: u16);
     fn render_start_screen(&mut self);
+    fn render_game_over(&mut self, score: u16);
+    fn render_selecting_mode(&mut self);
     fn clean_up(&mut self);
     fn get_size(&self) -> (u16, u16);
     fn debug(&mut self, line: String);
     fn reset_objects(&mut self);
+    fn update_mode(&mut self, mode: UIMode);
+    fn get_mode(&self) -> UIMode;
+    fn autoresize(&mut self);
 }
 
 pub struct Game {
@@ -25,7 +29,7 @@ pub struct Game {
     score: u16,
     client: client::GroqClient,
     commands: Vec<String>,
-    start_screen: bool,
+    game_state: GameState,
 }
 
 impl Game {
@@ -37,36 +41,80 @@ impl Game {
             score: 0,
             client,
             commands: Vec::new(),
-            start_screen: true,
+            game_state: GameState::NotStarted,
         }
     }
 
     pub fn start(&mut self) {
         self.board.prepare_ui();
+        self.new_game();
 
         loop {
+            if self.board.get_mode() == UIMode::SelectingMode {
+                if let Some(command) = events::get_mod_command() {
+                    match command {
+                        GameMod::Player => {
+                            self.game_state = GameState::NotStarted;
+                            self.board.update_mode(UIMode::Game);
+                        }
+                        GameMod::Api(Provider::Groq) => {
+                            self.game_state = GameState::Running;
+                            self.board.update_mode(UIMode::GameWithDebug)
+                        }
+                    }
+                }
+                self.board.render_selecting_mode();
+                self.new_game();
+                continue;
+            }
             let user_command = events::get_command();
             if let Some(command) = &user_command {
                 match command {
-                    Command::Turn(direction) => self.snake.change_direction(direction.clone()),
+                    Command::Turn(direction) => {
+                        self.snake.change_direction(direction.clone());
+                    }
+                    Command::SelectMode => {
+                        self.board.update_mode(UIMode::SelectingMode);
+                        continue;
+                    }
                     Command::Quit => break,
                 }
             };
-            if self.start_screen {
-                self.board.render_start_screen();
-                if user_command.is_some() {
-                    self.start_screen = false;
-
-                    let (width, height) = self.board.get_size();
-                    self.snake
-                        .set_head(Point::new_center(width as i32, height as i32));
-
-                    self.food = Point::new_random(width as i32, height as i32);
+            match self.game_state {
+                GameState::NotStarted => {
+                    if user_command.is_some() {
+                        self.game_state = GameState::Running;
+                        continue;
+                    }
+                    self.board.render_start_screen();
                 }
-                continue;
+                GameState::Running => {
+                    if self.crossed_borders_or_eat_itself() {
+                        self.game_state = GameState::GameOver;
+                        continue;
+                    };
+
+                    let growing = self.is_food_eaten();
+                    if growing {
+                        self.change_food_position();
+                        self.increment_score();
+                    }
+                    self.snake.moving(growing);
+
+                    self.board.render_game(
+                        self.snake.clone(),
+                        self.food.clone(),
+                        self.score.clone(),
+                    );
+                }
+                GameState::GameOver => {
+                    self.board.render_game_over(self.score);
+                    if user_command.is_some() {
+                        self.game_state = GameState::Running;
+                        self.new_game();
+                    }
+                }
             }
-            self.board
-                .render(self.snake.clone(), self.food.clone(), self.score.clone());
 
             // if let Some(command) = events::get_command() {
 
@@ -81,12 +129,6 @@ impl Game {
             //     }
             // }
 
-            let growing = self.is_food_eaten();
-            if growing {
-                self.change_food_position();
-                self.increment_score();
-            }
-
             // if self.commands.len() > 0 {
             // let command = self.commands.remove(0);
             // self.snake.change_direction(match command.as_str() {
@@ -97,15 +139,6 @@ impl Game {
             //     _ => Direction::Down,
             // });
             // }
-
-            if self.crossed_borders_or_eat_itself() {
-                self.start_screen = true;
-                self.board.reset_objects();
-                self.score = 0;
-                self.snake = Snake::new();
-                continue;
-            };
-            self.snake.moving(growing);
         }
         self.board.clean_up();
     }
@@ -122,9 +155,20 @@ impl Game {
         self.score += 1;
     }
 
+    fn new_game(&mut self) {
+        self.board.reset_objects();
+        self.snake.reset();
+
+        let (width, height) = self.board.get_size();
+        self.snake
+            .set_head(Point::new_center(width as i32, height as i32));
+
+        self.food = Point::new_random(width as i32, height as i32);
+        self.score = 0;
+    }
+
     fn do_commands_request(&mut self, s_head: Point, direction: Direction) {
         let food = self.food.clone();
-        // let (width, height) = self.board.get_size();
 
         let commands = self.client.snake_commands(models::InputContent {
             snake_direction: direction.as_string(),

@@ -1,4 +1,7 @@
-use std::io::{self, stdout};
+use std::{
+    io::{self, stdout},
+    thread::scope,
+};
 
 use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -7,11 +10,13 @@ use crossterm::{
 
 use ratatui::{backend::CrosstermBackend, text::Line, Terminal};
 
-use crate::{game::Board, point::Point, snake::Snake};
-
-use self::draw::{ui, UIMode};
+use crate::{game::Board, models::Point, snake::Snake};
 
 mod draw;
+
+use crate::models::{GameState, UIMode};
+
+use self::draw::ui;
 
 pub struct BoardTUI<'a> {
     terminal: Terminal<CrosstermBackend<io::Stdout>>,
@@ -27,7 +32,6 @@ pub struct BoardTUI<'a> {
 struct RednerObjects {
     snake: Snake,
     food: Point,
-    score: u16,
 }
 
 impl<'a> Board for BoardTUI<'a> {
@@ -42,19 +46,16 @@ impl<'a> Board for BoardTUI<'a> {
             crossterm::execute!(io::stdout(), LeaveAlternateScreen).unwrap();
             original_hook(panic);
         }));
-
-        let board_size = (&mut self.width, &mut self.height);
-
-        self.terminal
-            .draw(|frame| ui(frame, &self.render_objects, board_size, &self.ui_mode, true))
-            .unwrap();
+        self.autoresize();
+        let size = self.terminal.get_frame().size();
+        self.width = size.width;
+        self.height = size.height;
     }
 
-    fn render(&mut self, snake: Snake, food: Point, score: u16) {
+    fn render_game(&mut self, snake: Snake, food: Point, score: u16) {
         self.render_objects = Some(RednerObjects {
             snake: snake,
             food: food,
-            score: score,
         });
 
         let board_size = (&mut self.width, &mut self.height);
@@ -66,10 +67,68 @@ impl<'a> Board for BoardTUI<'a> {
                     &self.render_objects,
                     board_size,
                     &self.ui_mode,
-                    false,
+                    GameState::Running,
+                    score,
                 )
             })
             .unwrap();
+    }
+
+    fn render_start_screen(&mut self) {
+        let board_size = (&mut self.width, &mut self.height);
+
+        self.terminal
+            .draw(|frame| {
+                ui(
+                    frame,
+                    &self.render_objects,
+                    board_size,
+                    &self.ui_mode,
+                    GameState::NotStarted,
+                    0,
+                )
+            })
+            .unwrap();
+    }
+
+    fn render_game_over(&mut self, score: u16) {
+        let board_size = (&mut self.width, &mut self.height);
+
+        self.terminal
+            .draw(|frame| {
+                ui(
+                    frame,
+                    &self.render_objects,
+                    board_size,
+                    &self.ui_mode,
+                    GameState::GameOver,
+                    score,
+                )
+            })
+            .unwrap();
+    }
+
+    fn render_selecting_mode(&mut self) {
+        self.terminal
+            .draw(|frame| {
+                ui(
+                    frame,
+                    &self.render_objects,
+                    (&mut self.width, &mut self.height),
+                    &self.ui_mode,
+                    GameState::NotStarted,
+                    0,
+                )
+            })
+            .unwrap();
+    }
+
+    fn update_mode(&mut self, mode: UIMode) {
+        self.ui_mode = mode;
+    }
+
+    fn get_mode(&self) -> UIMode {
+        self.ui_mode.clone()
     }
 
     fn clean_up(&mut self) {
@@ -85,16 +144,12 @@ impl<'a> Board for BoardTUI<'a> {
         self.std_debug.push(Line::from(line));
     }
 
-    fn render_start_screen(&mut self) {
-        let board_size = (&mut self.width, &mut self.height);
-
-        self.terminal
-            .draw(|frame| ui(frame, &self.render_objects, board_size, &self.ui_mode, true))
-            .unwrap();
-    }
-
     fn reset_objects(&mut self) {
         self.render_objects = None;
+    }
+
+    fn autoresize(&mut self) {
+        self.terminal.autoresize().unwrap();
     }
 }
 

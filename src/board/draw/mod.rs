@@ -1,14 +1,13 @@
 mod snake_shape;
 use self::snake_shape::SnakeShape;
 
-use std::{collections::LinkedList, rc::Rc, time};
+use std::rc::Rc;
 
-use crossterm::terminal::Clear;
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
-    style::Color,
+    layout::{self, Alignment, Constraint, Direction, Layout, Margin, Rect},
+    style::{Color, Stylize},
     symbols::{self, scrollbar, Marker},
-    text::Text,
+    text::{Line, Text},
     widgets::{
         canvas::{Canvas, Painter, Points, Shape},
         Block, Borders, Clear as ClearWidget, Paragraph, Scrollbar, ScrollbarOrientation,
@@ -17,25 +16,31 @@ use ratatui::{
     Frame,
 };
 
-use crate::{point::Point, snake::Snake};
+use crate::{
+    game, models::{GameState, Point, UIMode}, snake::Snake
+};
 
 use super::RednerObjects;
-
-pub enum UIMode {
-    Game,
-    GameWithDebug,
-}
 
 pub fn ui(
     frame: &mut Frame,
     render_objects: &Option<RednerObjects>,
     board_size: (&mut u16, &mut u16),
     ui_mode: &UIMode,
-    start_screen: bool,
+    game_state: GameState,
+    score: u16,
 ) {
     match ui_mode {
-        UIMode::Game => render_game(frame, render_objects, board_size, start_screen),
-        UIMode::GameWithDebug => render_game_with_debug(frame, render_objects, board_size),
+        UIMode::Game => render_game(frame, render_objects, board_size, game_state, score),
+        UIMode::GameWithDebug => render_game_with_debug(frame, render_objects, board_size, game_state, score),
+        UIMode::SelectingMode => {
+            let main_layout = main_layout(frame);
+
+            frame.render_widget(Block::bordered().title("Snake game"), main_layout[0]);
+            let paragraph = Paragraph::new(Text::raw("some debug messages")).centered();
+            let area = centered_rect(60, 20, main_layout[0]);
+            frame.render_widget(paragraph, area);
+        }
     }
 }
 
@@ -43,33 +48,65 @@ fn render_game(
     frame: &mut Frame,
     render_objects: &Option<RednerObjects>,
     board_size: (&mut u16, &mut u16),
-    start_screen: bool,
+    game_state: GameState,
+    score: u16,
 ) {
     let main_layout = main_layout(frame);
 
-    let new_size = new_size_board(&main_layout, board_size);
+    render_game_state(
+        frame,
+        game_state,
+        render_objects,
+        score,
+        board_size,
+        main_layout[0],
+        main_layout[1],
+    );
+}
 
-    if start_screen {
-        frame.render_widget(Block::bordered().title("Snake game"), main_layout[0]);
-        let paragraph =
-            Paragraph::new(Text::raw("Press arrows to start or 'q' to quit")).centered();
-        let area = centered_rect(60, 20, main_layout[0]);
-        frame.render_widget(paragraph, area);
-    }
+fn render_game_state(
+    frame: &mut Frame,
+    game_state: GameState,
+    render_objects: &Option<RednerObjects>,
+    score: u16,
+    board_size: (&mut u16, &mut u16),
+    canvas_layout: Rect,
+    score_layout: Rect,
+) {
+    let new_size = new_size_board(&canvas_layout, board_size);
+    let mut content = vec![Line::from("Press arrows to start or 'q' to quit".bold())];
 
-    if let Some(objects) = render_objects {
-        frame.render_widget(score_block(objects.score), main_layout[1]);
-        frame.render_widget(
-            map_canvas(&objects.snake, &objects.food, new_size),
-            main_layout[0],
-        );
+    match game_state {
+        GameState::Running => {
+            if let Some(objects) = render_objects {
+                frame.render_widget(score_block(score), score_layout);
+                frame.render_widget(
+                    map_canvas(&objects.snake, &objects.food, new_size),
+                    canvas_layout,
+                );
+            }
+            return;
+        }
+        GameState::NotStarted => {}
+        GameState::GameOver => {
+            content.push(Line::from(""));
+            content.push(Line::from(
+                format!("Game over! your score was: {}", score).bold(),
+            ));
+        }
     }
+    frame.render_widget(Block::bordered().title("Snake game"), canvas_layout);
+    let paragraph = Paragraph::new(content).centered();
+    let area = centered_rect(60, 20, canvas_layout);
+    frame.render_widget(paragraph, area);
 }
 
 fn render_game_with_debug(
     frame: &mut Frame,
     render_objects: &Option<RednerObjects>,
     board_size: (&mut u16, &mut u16),
+    game_state: GameState,
+    score: u16,
 ) {
     let main_layout = main_layout(frame);
     let game_and_debug_layout = Layout::new(
@@ -78,15 +115,15 @@ fn render_game_with_debug(
     )
     .split(main_layout[0]);
 
-    let new_size = new_size_board(&main_layout, board_size);
-
-    if let Some(objects) = render_objects {
-        frame.render_widget(score_block(objects.score), main_layout[1]);
-        frame.render_widget(
-            map_canvas(&objects.snake, &objects.food, new_size),
-            game_and_debug_layout[0],
-        );
-    }
+    render_game_state(
+        frame,
+        game_state,
+        render_objects,
+        score,
+        board_size,
+        game_and_debug_layout[0],
+        main_layout[1],
+    );
 
     let paragraph = Paragraph::new(Text::raw("some debug messages"))
         .block(Block::bordered().title("Debug"))
@@ -124,7 +161,6 @@ fn score_block(score: u16) -> impl Widget + 'static {
 }
 
 fn map_canvas(snake: &Snake, food: &Point, canvas_size: (u16, u16)) -> impl Widget + 'static {
-    // dbg!(canvas_size);
     let snake_shape = SnakeShape::new(snake.get_list());
     let food = food.clone();
 
@@ -164,8 +200,8 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     .split(popup_layout[1])[1]
 }
 
-fn new_size_board(main_layout: &Rc<[Rect]>, board_size: (&mut u16, &mut u16)) -> (u16, u16) {
-    let new_size = terminal_size_to_board_size((main_layout[0].width, main_layout[0].height));
+fn new_size_board(main_layout: &Rect, board_size: (&mut u16, &mut u16)) -> (u16, u16) {
+    let new_size = terminal_size_to_board_size((main_layout.width, main_layout.height));
 
     (*board_size.0, *board_size.1) = new_size;
     new_size

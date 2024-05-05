@@ -2,7 +2,8 @@ use std::collections::LinkedList;
 
 use ratatui::{style::Color, widgets::canvas::{Painter, Shape}};
 
-use crate::point::Point;
+use crate::models::Point;
+
 
 pub struct SnakeShape {
     list: LinkedList<Point>,

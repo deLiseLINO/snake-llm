@@ -4,6 +4,7 @@ mod config;
 mod direction;
 mod events;
 mod game;
+mod models;
 mod point;
 mod snake;
 use snake::Snake;
