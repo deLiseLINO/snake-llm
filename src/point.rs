@@ -15,4 +15,8 @@ impl Point {
         let mut rng = rand::thread_rng();
         Self::new(rng.gen_range(0..width), rng.gen_range(0..height))
     }
+
+    pub fn new_center(width: i32, height: i32) -> Self {
+        Self::new(width / 2, height / 2)
+    }
 }

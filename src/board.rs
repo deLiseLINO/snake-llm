@@ -9,7 +9,7 @@ use ratatui::{backend::CrosstermBackend, text::Line, Terminal};
 
 use crate::{game::Board, point::Point, snake::Snake};
 
-use self::draw::ui;
+use self::draw::{ui, UIMode};
 
 mod draw;
 
@@ -17,6 +17,7 @@ pub struct BoardTUI<'a> {
     terminal: Terminal<CrosstermBackend<io::Stdout>>,
     std_debug: Vec<Line<'a>>,
     render_objects: Option<RednerObjects>,
+    ui_mode: UIMode,
     width: u16,
     height: u16,
 }
@@ -34,10 +35,18 @@ impl<'a> Board for BoardTUI<'a> {
         enable_raw_mode().unwrap();
         stdout().execute(EnterAlternateScreen).unwrap();
 
+        let original_hook = std::panic::take_hook();
+
+        std::panic::set_hook(Box::new(move |panic| {
+            disable_raw_mode().unwrap();
+            crossterm::execute!(io::stdout(), LeaveAlternateScreen).unwrap();
+            original_hook(panic);
+        }));
+
         let board_size = (&mut self.width, &mut self.height);
 
         self.terminal
-            .draw(|frame| ui(frame, &self.render_objects, board_size))
+            .draw(|frame| ui(frame, &self.render_objects, board_size, &self.ui_mode, true))
             .unwrap();
     }
 
@@ -51,7 +60,15 @@ impl<'a> Board for BoardTUI<'a> {
         let board_size = (&mut self.width, &mut self.height);
 
         self.terminal
-            .draw(|frame| ui(frame, &self.render_objects, board_size))
+            .draw(|frame| {
+                ui(
+                    frame,
+                    &self.render_objects,
+                    board_size,
+                    &self.ui_mode,
+                    false,
+                )
+            })
             .unwrap();
     }
 
@@ -60,12 +77,24 @@ impl<'a> Board for BoardTUI<'a> {
         stdout().execute(LeaveAlternateScreen).unwrap();
     }
 
-    fn get_size(&self) -> (&u16, &u16) {
-        (&self.width, &self.height)
+    fn get_size(&self) -> (u16, u16) {
+        (self.width, self.height)
     }
 
     fn debug(&mut self, line: String) {
         self.std_debug.push(Line::from(line));
+    }
+
+    fn render_start_screen(&mut self) {
+        let board_size = (&mut self.width, &mut self.height);
+
+        self.terminal
+            .draw(|frame| ui(frame, &self.render_objects, board_size, &self.ui_mode, true))
+            .unwrap();
+    }
+
+    fn reset_objects(&mut self) {
+        self.render_objects = None;
     }
 }
 
@@ -75,6 +104,7 @@ impl<'a> BoardTUI<'a> {
             terminal: Terminal::new(CrosstermBackend::new(stdout())).unwrap(),
             std_debug: Vec::new(),
             render_objects: None,
+            ui_mode: UIMode::Game,
             width: 0,
             height: 0,
         }

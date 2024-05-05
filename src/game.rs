@@ -1,4 +1,5 @@
 use rand::Rng;
+use ratatui::symbols::braille;
 
 use crate::client::{models, GroqClient};
 use crate::direction::Direction;
@@ -10,12 +11,11 @@ use crate::{client, events};
 pub trait Board {
     fn prepare_ui(&mut self);
     fn render(&mut self, snake: Snake, food: Point, score: u16);
+    fn render_start_screen(&mut self);
     fn clean_up(&mut self);
-    // fn get_food(&self) -> Point;
-    // fn change_food_position(&mut self);
-    // fn increment_score(&mut self);
-    fn get_size(&self) -> (&u16, &u16);
+    fn get_size(&self) -> (u16, u16);
     fn debug(&mut self, line: String);
+    fn reset_objects(&mut self);
 }
 
 pub struct Game {
@@ -25,6 +25,7 @@ pub struct Game {
     score: u16,
     client: client::GroqClient,
     commands: Vec<String>,
+    start_screen: bool,
 }
 
 impl Game {
@@ -32,33 +33,44 @@ impl Game {
         Self {
             board,
             snake,
-            food: Point { x: 0, y: 0 },
+            food: Point::new(0, 0),
             score: 0,
             client,
             commands: Vec::new(),
+            start_screen: true,
         }
     }
 
     pub fn start(&mut self) {
         self.board.prepare_ui();
 
-        let (width, height) = self.board.get_size();
-        self.snake
-            .set_head(Point::new_random(*width as i32, *height as i32));
+        loop {
+            let user_command = events::get_command();
+            if let Some(command) = &user_command {
+                match command {
+                    Command::Turn(direction) => self.snake.change_direction(direction.clone()),
+                    Command::Quit => break,
+                }
+            };
+            if self.start_screen {
+                self.board.render_start_screen();
+                if user_command.is_some() {
+                    self.start_screen = false;
 
-        let mut done = false;
-        while !done {
-            done = self.crossed_borders_or_eat_itself();
+                    let (width, height) = self.board.get_size();
+                    self.snake
+                        .set_head(Point::new_center(width as i32, height as i32));
+
+                    self.food = Point::new_random(width as i32, height as i32);
+                }
+                continue;
+            }
             self.board
                 .render(self.snake.clone(), self.food.clone(), self.score.clone());
-            // let temp = Rc::clone(&self.snake);
-            // let mut snake = &mut self.snake;
-            if let Some(command) = events::get_command() {
-                match command {
-                    Command::Turn(direction) => self.snake.change_direction(direction),
-                    Command::Quit => done = true,
-                }
-            }
+
+            // if let Some(command) = events::get_command() {
+
+            // }
 
             // if self.commands.len() == 0 {
             //     let head = self.snake.get_head();
@@ -86,6 +98,13 @@ impl Game {
             // });
             // }
 
+            if self.crossed_borders_or_eat_itself() {
+                self.start_screen = true;
+                self.board.reset_objects();
+                self.score = 0;
+                self.snake = Snake::new();
+                continue;
+            };
             self.snake.moving(growing);
         }
         self.board.clean_up();
@@ -94,8 +113,8 @@ impl Game {
     fn change_food_position(&mut self) {
         let (width, height) = self.board.get_size();
         self.food = Point::new(
-            rand::thread_rng().gen_range(0..*width) as i32,
-            rand::thread_rng().gen_range(0..*height) as i32,
+            rand::thread_rng().gen_range(0..width) as i32,
+            rand::thread_rng().gen_range(0..height) as i32,
         );
     }
 
@@ -149,7 +168,7 @@ impl Game {
                 return true;
             }
         }
-        head.x < 0 || head.y < 0 || head.x >= *width as i32 || head.y >= *height as i32
+        head.x < 0 || head.y < 0 || head.x >= width as i32 || head.y >= height as i32
     }
 
     fn debug(&mut self, line: String) {

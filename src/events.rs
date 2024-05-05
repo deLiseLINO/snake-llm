@@ -9,7 +9,7 @@ pub enum Command {
 }
 
 pub fn get_command() -> Option<Command> {
-    let wait_for = time::Duration::from_millis(50);
+    let wait_for = time::Duration::from_millis(30);
     let key_event = wait_for_key_event(wait_for)?;
     match key_event.code {
         event::KeyCode::Up => Some(Command::Turn(Direction::Up)),
@@ -19,6 +19,11 @@ pub fn get_command() -> Option<Command> {
         event::KeyCode::Char('q') => Some(Command::Quit),
         _ => None,
     }
+}
+
+pub fn any_key() -> bool {
+    let key_event = wait_for_key_event(time::Duration::from_millis(30)).is_some();
+    key_event
 }
 
 fn wait_for_key_event(wait_for: time::Duration) -> Option<event::KeyEvent> {
