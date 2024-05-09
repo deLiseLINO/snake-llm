@@ -12,14 +12,12 @@ use crate::{client, direction, events};
 
 pub trait Board {
     fn prepare_ui(&mut self);
-    fn render_game(&mut self, snake: Snake, food: Point, score: u16);
+    fn render_game(&mut self, snake: &Snake, food: &Point, score: u16);
     fn render_start_screen(&mut self);
     fn render_game_over(&mut self, score: u16);
     fn render_selecting_mode(&mut self);
     fn clean_up(&mut self);
     fn get_size(&self) -> (u16, u16);
-    fn debug(&mut self, line: String);
-    fn reset_objects(&mut self);
     fn update_mode(&mut self, mode: UIMode);
     fn get_mode(&self) -> UIMode;
     fn autoresize(&mut self);
@@ -66,7 +64,7 @@ impl Game {
                             self.game_state = GameState::NotStarted;
                             self.board.update_mode(UIMode::Game);
                         }
-                        GameMod::Api(provider) => {
+                        GameMod::Api(_) => {
                             self.game_state = GameState::Running;
                             self.board.update_mode(UIMode::GameWithDebug);
                         }
@@ -110,11 +108,7 @@ impl Game {
                     }
                     self.snake.moving(growing);
 
-                    self.board.render_game(
-                        self.snake.clone(),
-                        self.food.clone(),
-                        self.score.clone(),
-                    );
+                    self.board.render_game(&self.snake, &self.food, self.score);
                 }
                 GameState::GameOver => {
                     self.board.render_game_over(self.score);
@@ -165,7 +159,6 @@ impl Game {
     }
 
     fn new_game(&mut self) {
-        self.board.reset_objects();
         self.snake.reset();
 
         let (width, height) = self.board.get_size();
@@ -222,9 +215,5 @@ impl Game {
             }
         }
         head.x < 0 || head.y < 0 || head.x >= width as i32 || head.y >= height as i32
-    }
-
-    fn debug(&mut self, line: String) {
-        self.board.debug(line);
     }
 }

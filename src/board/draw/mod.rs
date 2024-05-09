@@ -4,20 +4,21 @@ use self::snake_shape::SnakeShape;
 use std::rc::Rc;
 
 use ratatui::{
-    layout::{self, Alignment, Constraint, Direction, Layout, Margin, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Stylize},
-    symbols::{self, scrollbar, Marker},
+    symbols::{self, Marker},
     text::{Line, Text},
     widgets::{
-        canvas::{Canvas, Painter, Points, Shape},
-        Block, Borders, Clear as ClearWidget, Paragraph, Scrollbar, ScrollbarOrientation,
-        ScrollbarState, Widget,
+        canvas::{Canvas, Points},
+        Block, Borders, Paragraph, Widget,
     },
     Frame,
 };
+use tui_logger::{TuiLoggerLevelOutput, TuiLoggerWidget};
 
 use crate::{
-    game, models::{GameState, Point, UIMode}, snake::Snake
+    models::{GameState, Point, UIMode},
+    snake::Snake,
 };
 
 use super::RednerObjects;
@@ -32,12 +33,14 @@ pub fn ui(
 ) {
     match ui_mode {
         UIMode::Game => render_game(frame, render_objects, board_size, game_state, score),
-        UIMode::GameWithDebug => render_game_with_debug(frame, render_objects, board_size, game_state, score),
+        UIMode::GameWithDebug => {
+            render_game_with_debug(frame, render_objects, board_size, game_state, score)
+        }
         UIMode::SelectingMode => {
             let main_layout = main_layout(frame);
 
             frame.render_widget(Block::bordered().title("Snake game"), main_layout[0]);
-            let paragraph = Paragraph::new(Text::raw("some debug messages")).centered();
+            let paragraph = Paragraph::new(Text::raw("Select game mode")).centered();
             let area = centered_rect(60, 20, main_layout[0]);
             frame.render_widget(paragraph, area);
         }
@@ -74,7 +77,7 @@ fn render_game_state(
     score_layout: Rect,
 ) {
     let new_size = new_size_board(&canvas_layout, board_size);
-    let mut content = vec![Line::from("Press arrows to start or 'q' to quit".bold())];
+    let mut content = vec![Line::from("Press any arrow to start or 'q' to quit".bold())];
 
     match game_state {
         GameState::Running => {
@@ -125,23 +128,15 @@ fn render_game_with_debug(
         main_layout[1],
     );
 
-    let paragraph = Paragraph::new(Text::raw("some debug messages"))
+    let log = TuiLoggerWidget::default()
         .block(Block::bordered().title("Debug"))
-        .scroll((0, 0));
-    frame.render_widget(paragraph, game_and_debug_layout[1]);
+        .output_level(Some(TuiLoggerLevelOutput::Abbreviated))
+        .output_target(false)
+        .output_timestamp(None)
+        .output_file(false)
+        .output_line(false);
 
-    frame.render_stateful_widget(
-        Scrollbar::new(ScrollbarOrientation::VerticalLeft)
-            .symbols(scrollbar::VERTICAL)
-            .begin_symbol(None)
-            .track_symbol(None)
-            .end_symbol(None),
-        game_and_debug_layout[1].inner(&Margin {
-            vertical: 1,
-            horizontal: 0,
-        }),
-        &mut ScrollbarState::default(),
-    );
+    frame.render_widget(log, game_and_debug_layout[1]);
 }
 
 fn main_layout(frame: &Frame) -> Rc<[Rect]> {
@@ -154,13 +149,13 @@ fn main_layout(frame: &Frame) -> Rc<[Rect]> {
     main_layout
 }
 
-fn score_block(score: u16) -> impl Widget + 'static {
+fn score_block(score: u16) -> impl Widget {
     Block::new()
         .title(format!("Score: {}", score))
         .title_alignment(Alignment::Center)
 }
 
-fn map_canvas(snake: &Snake, food: &Point, canvas_size: (u16, u16)) -> impl Widget + 'static {
+fn map_canvas(snake: &Snake, food: &Point, canvas_size: (u16, u16)) -> impl Widget {
     let snake_shape = SnakeShape::new(snake.get_list());
     let food = food.clone();
 

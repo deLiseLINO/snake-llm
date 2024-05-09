@@ -10,12 +10,14 @@ mod snake;
 use client::ApiClient;
 use models::Provider;
 use std::collections::HashMap;
+use tui_logger::init_logger;
 
 use snake::Snake;
 
 use crate::board::BoardTUI;
 
 fn main() {
+    init_logger(log::LevelFilter::Trace).unwrap();
     let config = config::parse();
     let groq_client = client::GroqClient::new(config.groq_client.url, config.groq_client.token);
     let mut clients: HashMap<Provider, Box<dyn ApiClient>> = HashMap::new();

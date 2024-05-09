@@ -18,23 +18,20 @@ use crate::models::{GameState, UIMode};
 
 use self::draw::ui;
 
-pub struct BoardTUI<'a> {
+pub struct BoardTUI {
     terminal: Terminal<CrosstermBackend<io::Stdout>>,
-    std_debug: Vec<Line<'a>>,
-    render_objects: Option<RednerObjects>,
     ui_mode: UIMode,
     width: u16,
     height: u16,
 }
 
-// todo: try add lifetimes
 #[derive(Clone)]
-struct RednerObjects {
-    snake: Snake,
-    food: Point,
+struct RednerObjects<'a> {
+    snake: &'a Snake,
+    food: &'a Point,
 }
 
-impl<'a> Board for BoardTUI<'a> {
+impl Board for BoardTUI {
     fn prepare_ui(&mut self) {
         enable_raw_mode().unwrap();
         stdout().execute(EnterAlternateScreen).unwrap();
@@ -52,8 +49,8 @@ impl<'a> Board for BoardTUI<'a> {
         self.height = size.height;
     }
 
-    fn render_game(&mut self, snake: Snake, food: Point, score: u16) {
-        self.render_objects = Some(RednerObjects {
+    fn render_game(&mut self, snake: &Snake, food: &Point, score: u16) {
+        let render_objects = Some(RednerObjects {
             snake: snake,
             food: food,
         });
@@ -64,7 +61,7 @@ impl<'a> Board for BoardTUI<'a> {
             .draw(|frame| {
                 ui(
                     frame,
-                    &self.render_objects,
+                    &render_objects,
                     board_size,
                     &self.ui_mode,
                     GameState::Running,
@@ -81,7 +78,7 @@ impl<'a> Board for BoardTUI<'a> {
             .draw(|frame| {
                 ui(
                     frame,
-                    &self.render_objects,
+                    &None,
                     board_size,
                     &self.ui_mode,
                     GameState::NotStarted,
@@ -98,7 +95,7 @@ impl<'a> Board for BoardTUI<'a> {
             .draw(|frame| {
                 ui(
                     frame,
-                    &self.render_objects,
+                    &None,
                     board_size,
                     &self.ui_mode,
                     GameState::GameOver,
@@ -113,7 +110,7 @@ impl<'a> Board for BoardTUI<'a> {
             .draw(|frame| {
                 ui(
                     frame,
-                    &self.render_objects,
+                    &None,
                     (&mut self.width, &mut self.height),
                     &self.ui_mode,
                     GameState::NotStarted,
@@ -140,25 +137,15 @@ impl<'a> Board for BoardTUI<'a> {
         (self.width, self.height)
     }
 
-    fn debug(&mut self, line: String) {
-        self.std_debug.push(Line::from(line));
-    }
-
-    fn reset_objects(&mut self) {
-        self.render_objects = None;
-    }
-
     fn autoresize(&mut self) {
         self.terminal.autoresize().unwrap();
     }
 }
 
-impl<'a> BoardTUI<'a> {
+impl BoardTUI {
     pub fn new() -> Self {
         Self {
             terminal: Terminal::new(CrosstermBackend::new(stdout())).unwrap(),
-            std_debug: Vec::new(),
-            render_objects: None,
             ui_mode: UIMode::Game,
             width: 0,
             height: 0,
