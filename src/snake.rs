@@ -1,9 +1,8 @@
 use rand::Rng;
 
-use crate::direction::Direction;
-// use crate::game::Snake as SnakeT;
-use crate::point::Point;
 use std::collections::LinkedList;
+
+use crate::models::{Direction, Point};
 
 #[derive(Clone)]
 pub struct Snake {
@@ -67,5 +66,9 @@ impl Snake {
 
     pub fn _get_direction(&mut self) -> Direction {
         self.direction.clone()
+    }
+
+    pub fn reset(&mut self) {
+        self.list.clear();
     }
 }
