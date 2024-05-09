@@ -1,14 +1,12 @@
 use std::collections::HashMap;
 
 use rand::Rng;
-use ratatui::symbols::braille;
 
-use crate::client::models::InputContent;
-use crate::client::{models, ApiClient, GroqClient};
+use crate::client::ApiClient;
+use crate::events;
 use crate::events::Command;
-use crate::models::{Direction, GameMod, GameState, Point, Provider, UIMode};
+use crate::models::{GameMod, GameState, Point, Provider, UIMode};
 use crate::snake::Snake;
-use crate::{client, direction, events};
 
 pub trait Board {
     fn prepare_ui(&mut self);

@@ -1,14 +1,11 @@
-use std::{
-    io::{self, stdout},
-    thread::scope,
-};
+use std::io::{self, stdout};
 
 use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
 
-use ratatui::{backend::CrosstermBackend, text::Line, Terminal};
+use ratatui::{backend::CrosstermBackend, Terminal};
 
 use crate::{game::Board, models::Point, snake::Snake};
 
