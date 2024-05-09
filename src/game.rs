@@ -30,6 +30,7 @@ pub struct Game {
     commands: Vec<String>,
     game_state: GameState,
     api_providers: HashMap<Provider, Box<dyn ApiClient>>,
+    game_mod: GameMod,
 }
 
 impl Game {
@@ -47,6 +48,7 @@ impl Game {
             commands: Vec::new(),
             game_state: GameState::NotStarted,
             api_providers,
+            game_mod: GameMod::Player,
         }
     }
 
@@ -55,66 +57,25 @@ impl Game {
         self.new_game();
 
         loop {
-            if self.board.get_mode() == UIMode::SelectingMode {
-                if let Some(command) = events::get_mod_command() {
-                    match command {
-                        GameMod::Player => {
-                            self.game_state = GameState::NotStarted;
-                            self.board.update_mode(UIMode::Game);
-                        }
-                        GameMod::Api(_) => {
-                            self.game_state = GameState::Running;
-                            self.board.update_mode(UIMode::GameWithDebug);
-                        }
-                    }
-                }
-                self.board.render_selecting_mode();
-                self.new_game();
-                continue;
-            }
             let user_command = events::get_command();
             if let Some(command) = &user_command {
                 match command {
-                    Command::Turn(direction) => {
-                        self.snake.change_direction(direction.clone());
-                    }
+                    Command::Quit => break,
                     Command::SelectMode => {
                         self.board.update_mode(UIMode::SelectingMode);
-                        continue;
                     }
-                    Command::Quit => break,
+                    _ => (),
                 }
-            };
-            match self.game_state {
-                GameState::NotStarted => {
-                    if user_command.is_some() {
-                        self.game_state = GameState::Running;
-                        continue;
-                    }
-                    self.board.render_start_screen();
-                }
-                GameState::Running => {
-                    if self.crossed_borders_or_eat_itself() {
-                        self.game_state = GameState::GameOver;
-                        continue;
-                    };
+            }
 
-                    let growing = self.is_food_eaten();
-                    if growing {
-                        self.change_food_position();
-                        self.increment_score();
-                    }
-                    self.snake.moving(growing);
+            if self.board.get_mode() == UIMode::SelectingMode {
+                self.handle_selecting_mode(&user_command);
+                continue;
+            }
 
-                    self.board.render_game(&self.snake, &self.food, self.score);
-                }
-                GameState::GameOver => {
-                    self.board.render_game_over(self.score);
-                    if user_command.is_some() {
-                        self.game_state = GameState::Running;
-                        self.new_game();
-                    }
-                }
+            match &self.game_mod {
+                GameMod::Player => self.handle_player_mode(&user_command),
+                GameMod::Api(provider) => (),
             }
 
             // if let Some(command) = events::get_command() {
@@ -142,6 +103,71 @@ impl Game {
             // }
         }
         self.board.clean_up();
+    }
+
+    fn handle_selecting_mode(&mut self, user_command: &Option<Command>) {
+        if let Some(command) = &user_command {
+            match command {
+                Command::SelectingModeCommand(GameMod::Player) => {
+                    self.game_state = GameState::NotStarted;
+                    self.board.update_mode(UIMode::Game);
+                }
+                Command::SelectingModeCommand(GameMod::Api(_)) => {
+                    self.game_state = GameState::Running;
+                    self.board.update_mode(UIMode::GameWithDebug);
+                }
+                _ => (),
+            }
+        } else {
+            self.board.render_selecting_mode();
+        }
+        self.new_game();
+    }
+
+    // handle llm_game_mode(&mut self,) {
+
+    // }
+
+    fn handle_player_mode(&mut self, user_command: &Option<Command>) {
+        if let Some(command) = &user_command {
+            match command {
+                Command::Turn(direction) => {
+                    self.snake.change_direction(direction.clone());
+                }
+                _ => (),
+            }
+        };
+        match self.game_state {
+            GameState::NotStarted => {
+                if user_command.is_some() {
+                    self.game_state = GameState::Running;
+                    return;
+                }
+                self.board.render_start_screen();
+            }
+            GameState::Running => {
+                if self.crossed_borders_or_eat_itself() {
+                    self.game_state = GameState::GameOver;
+                    return;
+                };
+
+                let growing = self.is_food_eaten();
+                if growing {
+                    self.change_food_position();
+                    self.increment_score();
+                }
+                self.snake.moving(growing);
+
+                self.board.render_game(&self.snake, &self.food, self.score);
+            }
+            GameState::GameOver => {
+                self.board.render_game_over(self.score);
+                if user_command.is_some() {
+                    self.game_state = GameState::Running;
+                    self.new_game();
+                }
+            }
+        }
     }
 
     fn change_food_position(&mut self) {

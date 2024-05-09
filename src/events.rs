@@ -7,8 +7,11 @@ use crate::models::{Direction, GameMod, Provider};
 pub enum Command {
     Quit,
     Turn(Direction),
+    SelectingModeCommand(GameMod),
     SelectMode,
+    AnyKey,
 }
+
 
 pub fn get_command() -> Option<Command> {
     let wait_for = time::Duration::from_millis(30);
@@ -20,17 +23,13 @@ pub fn get_command() -> Option<Command> {
         event::KeyCode::Right => Some(Command::Turn(Direction::Right)),
         event::KeyCode::Char('q') => Some(Command::Quit),
         event::KeyCode::Char('m') => Some(Command::SelectMode),
-        _ => None,
-    }
-}
 
-pub fn get_mod_command() -> Option<GameMod> {
-    let wait_for = time::Duration::from_millis(30);
-    let key_event = wait_for_key_event(wait_for)?;
-    match key_event.code {
-        event::KeyCode::Char('1') => Some(GameMod::Player),
-        event::KeyCode::Char('2') => Some(GameMod::Api(Provider::Groq)),
-        _ => None,
+        // Selecting mode
+        event::KeyCode::Char('1') => Some(Command::SelectingModeCommand(GameMod::Player)),
+        event::KeyCode::Char('2') => {
+            Some(Command::SelectingModeCommand(GameMod::Api(Provider::Groq)))
+        }
+        _ => Some(Command::AnyKey),
     }
 }
 
