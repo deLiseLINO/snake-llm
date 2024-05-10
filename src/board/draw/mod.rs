@@ -114,7 +114,7 @@ fn render_game_with_debug(
     let main_layout = main_layout(frame);
     let game_and_debug_layout = Layout::new(
         Direction::Horizontal,
-        [Constraint::Min(50), Constraint::Length(50)],
+        [Constraint::Min(0), Constraint::Length(50)],
     )
     .split(main_layout[0]);
 

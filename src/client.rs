@@ -80,8 +80,16 @@ impl GroqClient {
             }
         };
         if let Some(resp) = resp {
-            let _res: OutputContent = match serde_json::from_str(&resp.choices[0].message.content) {
-                Ok(res) => return Ok(res),
+            let res: Result<OutputContent, serde_json::Error> =
+                serde_json::from_str(&resp.choices[0].message.content);
+            match res {
+                Ok(res) => {
+                    if res.commands.len() > 0 {
+                        return Ok(res);
+                    } else {
+                        return Err("No commands".to_string());
+                    }
+                }
                 Err(e) => {
                     return Err(format!("Failed to parse messages body {}", e));
                 }

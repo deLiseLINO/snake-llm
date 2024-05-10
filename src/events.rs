@@ -12,7 +12,6 @@ pub enum Command {
     AnyKey,
 }
 
-
 pub fn get_command() -> Option<Command> {
     let wait_for = time::Duration::from_millis(30);
     let key_event = wait_for_key_event(wait_for)?;
