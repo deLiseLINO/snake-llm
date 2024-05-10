@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
+use log::*;
 use rand::Rng;
 
-use crate::client::ApiClient;
-use crate::events;
+use crate::client::{self, ApiClient};
 use crate::events::Command;
 use crate::models::{GameMod, GameState, Point, Provider, UIMode};
 use crate::snake::Snake;
+use crate::{events, models};
 
 pub trait Board {
     fn prepare_ui(&mut self);
@@ -26,10 +27,11 @@ pub struct Game {
     snake: Snake,
     food: Point,
     score: u16,
-    client: Option<Box<dyn ApiClient>>,
-    commands: Vec<String>,
+    client: Option<Provider>,
+    commands: Vec<models::Direction>,
     game_state: GameState,
     api_providers: HashMap<Provider, Box<dyn ApiClient>>,
+    game_mod: GameMod,
 }
 
 impl Game {
@@ -47,6 +49,7 @@ impl Game {
             commands: Vec::new(),
             game_state: GameState::NotStarted,
             api_providers,
+            game_mod: GameMod::Player,
         }
     }
 
@@ -55,36 +58,23 @@ impl Game {
         self.new_game();
 
         loop {
-            if self.board.get_mode() == UIMode::SelectingMode {
-                if let Some(command) = events::get_mod_command() {
-                    match command {
-                        GameMod::Player => {
-                            self.game_state = GameState::NotStarted;
-                            self.board.update_mode(UIMode::Game);
-                        }
-                        GameMod::Api(_) => {
-                            self.game_state = GameState::Running;
-                            self.board.update_mode(UIMode::GameWithDebug);
-                        }
-                    }
-                }
-                self.board.render_selecting_mode();
-                self.new_game();
-                continue;
-            }
             let user_command = events::get_command();
             if let Some(command) = &user_command {
                 match command {
-                    Command::Turn(direction) => {
-                        self.snake.change_direction(direction.clone());
-                    }
+                    Command::Quit => break,
                     Command::SelectMode => {
                         self.board.update_mode(UIMode::SelectingMode);
-                        continue;
                     }
-                    Command::Quit => break,
+                    _ => (),
                 }
-            };
+            }
+
+            if self.board.get_mode() == UIMode::SelectingMode {
+                self.handle_selecting_mode(&user_command);
+                continue;
+            }
+
+            let mut growing = false;
             match self.game_state {
                 GameState::NotStarted => {
                     if user_command.is_some() {
@@ -99,13 +89,11 @@ impl Game {
                         continue;
                     };
 
-                    let growing = self.is_food_eaten();
+                    growing = self.is_food_eaten();
                     if growing {
                         self.change_food_position();
                         self.increment_score();
                     }
-                    self.snake.moving(growing);
-
                     self.board.render_game(&self.snake, &self.food, self.score);
                 }
                 GameState::GameOver => {
@@ -113,35 +101,66 @@ impl Game {
                     if user_command.is_some() {
                         self.game_state = GameState::Running;
                         self.new_game();
+                        continue;
                     }
                 }
             }
 
-            // if let Some(command) = events::get_command() {
+            match &self.game_mod {
+                GameMod::Player => {
+                    if matches!(self.game_state, GameState::Running) {
+                        if let Some(command) = &user_command {
+                            match command {
+                                Command::Turn(direction) => {
+                                    self.snake.change_direction(direction.clone());
+                                }
+                                _ => (),
+                            }
+                        };
+                    }
+                }
+                GameMod::Api(_provider) => {
+                    if matches!(self.game_state, GameState::Running) {
+                        if self.commands.len() == 0 {
+                            self.do_commands_request(self.snake.get_head())
+                        }
+                        if self.commands.len() > 0 {
+                            let command = self.commands.remove(0);
+                            self.snake.change_direction(command);
+                        } else {
+                            continue;
+                        }
+                    }
+                }
+            }
 
-            // }
-
-            // if self.commands.len() == 0 {
-            //     let head = self.snake.get_head();
-            //     let direction = self.snake.get_direction();
-            //     self.do_commands_request(head, direction);
-            //     if self.commands.len() == 0 {
-            //         continue;
-            //     }
-            // }
-
-            // if self.commands.len() > 0 {
-            // let command = self.commands.remove(0);
-            // self.snake.change_direction(match command.as_str() {
-            //     "up" => Direction::Up,
-            //     "down" => Direction::Down,
-            //     "left" => Direction::Left,
-            //     "right" => Direction::Right,
-            //     _ => Direction::Down,
-            // });
-            // }
+            if matches!(self.game_state, GameState::Running) {
+                self.snake.moving(growing);
+            }
         }
         self.board.clean_up();
+    }
+
+    fn handle_selecting_mode(&mut self, user_command: &Option<Command>) {
+        if let Some(command) = &user_command {
+            match command {
+                Command::SelectingModeCommand(GameMod::Player) => {
+                    self.game_state = GameState::NotStarted;
+                    self.board.update_mode(UIMode::Game);
+                    self.game_mod = GameMod::Player;
+                }
+                Command::SelectingModeCommand(GameMod::Api(provider)) => {
+                    self.game_state = GameState::Running;
+                    self.board.update_mode(UIMode::GameWithDebug);
+                    self.game_mod = GameMod::Api(provider.clone());
+                    self.client = Some(provider.clone());
+                }
+                _ => (),
+            }
+        } else {
+            self.board.render_selecting_mode();
+        }
+        self.new_game();
     }
 
     fn change_food_position(&mut self) {
@@ -158,6 +177,7 @@ impl Game {
 
     fn new_game(&mut self) {
         self.snake.reset();
+        self.commands.clear();
 
         let (width, height) = self.board.get_size();
         self.snake
@@ -167,32 +187,37 @@ impl Game {
         self.score = 0;
     }
 
-    // fn do_commands_request(&mut self, s_head: Point, direction: Direction) {
-    //     let food = self.food.clone();
+    fn do_commands_request(&mut self, s_head: Point) {
+        let food = self.food.clone();
+        if let Some(provider) = &self.client {
+            if let Some(client) = self.api_providers.get_mut(&provider) {
+                let commands = client.snake_commands(client::models::InputContent {
+                    snake_head_x: s_head.x,
+                    snake_head_y: s_head.y,
+                    food_x: food.x,
+                    food_y: food.y,
+                });
 
-    //     let commands = self.client.snake_commands(models::InputContent {
-    //         snake_direction: direction.as_string(),
-    //         snake_head_x: s_head.x,
-    //         snake_head_y: s_head.y,
-    //         food_x: food.x,
-    //         food_y: food.y,
-    //     });
-    //     let res = match commands {
-    //         Ok(res) => res,
-    //         Err(e) => {
-    //             self.debug(e);
-    //             return;
-    //         }
-    //     };
 
-    //     self.board.debug(format!("{:?}", res.commands));
 
-    //     for c in res.commands {
-    //         for _ in 0..c.repeat {
-    //             self.commands.push(c.command.clone());
-    //         }
-    //     }
-    // }
+                let res = match commands {
+                    Ok(res) => {
+                        info!("{:?}", res);
+                        res
+                    }
+                    Err(e) => {
+                        warn!("{}", e);
+                        return;
+                    }
+                };
+                for c in res.commands {
+                    for _ in 0..c.repeat {
+                        self.commands.push(c.command.clone());
+                    }
+                }
+            }
+        }
+    }
 
     fn is_food_eaten(&self) -> bool {
         let head = self.snake.get_head();

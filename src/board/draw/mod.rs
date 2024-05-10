@@ -77,7 +77,7 @@ fn render_game_state(
     score_layout: Rect,
 ) {
     let new_size = new_size_board(&canvas_layout, board_size);
-    let mut content = vec![Line::from("Press any arrow to start or 'q' to quit".bold())];
+    let mut content = vec![Line::from("Press any key to start or 'q' to quit".bold())];
 
     match game_state {
         GameState::Running => {
@@ -114,7 +114,7 @@ fn render_game_with_debug(
     let main_layout = main_layout(frame);
     let game_and_debug_layout = Layout::new(
         Direction::Horizontal,
-        [Constraint::Min(50), Constraint::Length(50)],
+        [Constraint::Min(0), Constraint::Length(50)],
     )
     .split(main_layout[0]);
 

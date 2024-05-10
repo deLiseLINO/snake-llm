@@ -10,7 +10,7 @@ pub enum GameMod {
     Api(Provider),
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub enum Provider {
     Groq,
 }
@@ -21,7 +21,8 @@ pub enum GameState {
     GameOver,
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum Direction {
     Up,
     Down,
@@ -39,7 +40,7 @@ impl Direction {
         }
     }
 
-    pub fn as_string(&self) -> String {
+    pub fn _as_string(&self) -> String {
         match self {
             Direction::Up => String::from("up"),
             Direction::Down => String::from("down"),
@@ -50,6 +51,7 @@ impl Direction {
 }
 
 use rand::Rng;
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Debug)]
 pub struct Point {
