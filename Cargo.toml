@@ -12,6 +12,7 @@ log = "0.4.21"
 rand = "0.8.5"
 ratatui = "0.26.2"
 reqwest = { version = "0.12.4", features = ["blocking"] }
+rstest = "0.19.0"
 serde = "1.0.199"
 serde_derive = "1.0.199"
 serde_json = "1.0.116"

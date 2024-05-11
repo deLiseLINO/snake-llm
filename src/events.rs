@@ -13,7 +13,7 @@ pub enum Command {
 }
 
 pub fn get_command() -> Option<Command> {
-    let wait_for = time::Duration::from_millis(30);
+    let wait_for = time::Duration::from_millis(15);
     let key_event = wait_for_key_event(wait_for)?;
     match key_event.code {
         event::KeyCode::Up => Some(Command::Turn(Direction::Up)),

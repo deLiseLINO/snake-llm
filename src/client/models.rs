@@ -5,25 +5,18 @@ use serde_derive::{Deserialize, Serialize};
 
 // pub static SYSTEM_PROMPT: &str = "You take coordinates of the snake head, coordinates of the food in JSON format: { \"snake_head_x\": int, \"snake_head_y\": int, \"food_x\": int, \"food_y\": int, }. 0, 0 is the coorinates of left bottom corner. Your goal is to make snake_x = food_x and snake_y = food_y. You should give commands to the snake in JSON format: { \"commands\": [ {\"command\": string, \"repeat\": int} ] }. remember that \"up\" is snake_y += 1, \"down\" is snake_y -= 1. also remember that \"left\" is snake_x -= 1 \"right\" is snake_x += 1";
 
-pub static SYSTEM_PROMPT: &str = r#"Snake Game Instructions
-
+pub static SYSTEM_PROMPT: &str = r#"
 Input: Take coordinates of the snake head and food in JSON format: {"snake_head_x": int, "snake_head_y": int, "food_x": int, "food_y": int}
-
-Note: The origin (0, 0) is the bottom-left corner.
-
-Goal: Make the snake head reach the food by giving commands in JSON format: {"commands": [{"command": string, "repeat": int}]}
-
-Key Requirement: You need to provide enough commands in a single request to reach the food. The snake should reach the food in one step, so plan your commands accordingly.
-
-Important: It is crucial to give the right commands to reach the food. One wrong move can lead to failure. Please think carefully before sending your commands.
-
-Commands:
-
-"up": Move the snake up (increment "snake_y" by 1)
-"down": Move the snake down (decrement "snake_y" by 1)
-"left": Move the snake left (decrement "snake_x" by 1)
-"right": Move the snake right (increment "snake_x" by 1)
-Remember: Your goal is to make "snake_x" equal to "food_x" and "snake_y" equal to "food_y"."#;
+Goal: Make the snake head reach the food by giving commands always in JSON format: {"commands": [{"command": string, "repeat": int}]}
+Examples:
+If food_y is greater than snake_head_y, move up: {"commands": [{"command": "up", "repeat": food_y - snake_head_y}]}
+If food_y is less than snake_head_y, move down: {"commands": [{"command": "down", "repeat": snake_head_y - food_y}]}
+If food_x is greater than snake_head_x, move right: {"commands": [{"command": "right", "repeat": food_x - snake_head_x}]}
+If food_x is less than snake_head_x, move left: {"commands": [{"command": "left", "repeat": snake_head_x - food_x}]}
+Don't answer anything except json. You are controlling the snake, not the food.
+Just calculate the right distance between the snake and the food and give commands.
+For example if food_y is 41, and snake_head_y is 20, snake needs to go up 21 times.
+Remember: Your goal is to make "snake_head_x" equal to "food_x" and "snake_head_y" equal to "food_y"."#;
 
 #[allow(dead_code)]
 pub enum Role {
@@ -38,23 +31,6 @@ impl Role {
             Role::User => "user".to_owned(),
             Role::System => "system".to_owned(),
             Role::Assistant => "assistant".to_owned(),
-        }
-    }
-}
-
-#[allow(dead_code)]
-pub enum Models {
-    Llama3b70,
-    LLama3b8,
-    Mixtrel8b,
-}
-
-impl Models {
-    pub fn as_string(&self) -> String {
-        match self {
-            Models::LLama3b8 => "llama3-8b-8192".to_owned(),
-            Models::Llama3b70 => "llama3-70b-8192".to_owned(),
-            Models::Mixtrel8b => "Mixtral-8x7b-32768".to_owned(),
         }
     }
 }
@@ -85,12 +61,12 @@ pub struct InputContent {
 //     pub food: (i32, i32),
 // }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct OutputContent {
     pub commands: Vec<Commands>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Commands {
     pub command: Direction,
     pub repeat: i32,
