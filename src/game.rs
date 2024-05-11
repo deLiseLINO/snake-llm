@@ -1,11 +1,12 @@
-use std::collections::HashMap;
+use std::sync::mpsc::{Receiver, SyncSender};
 
 use log::*;
 use rand::Rng;
 
-use crate::client::{self, ApiClient};
+use crate::client::models::OutputContent;
+use crate::client::{self};
 use crate::events::Command;
-use crate::models::{GameMod, GameState, Point, Provider, UIMode};
+use crate::models::{GameMod, GameState, Point, Provider, RequestInfo, UIMode};
 use crate::snake::Snake;
 use crate::{events, models};
 
@@ -30,15 +31,17 @@ pub struct Game {
     client: Option<Provider>,
     commands: Vec<models::Direction>,
     game_state: GameState,
-    api_providers: HashMap<Provider, Box<dyn ApiClient>>,
     game_mod: GameMod,
+    tx_request: SyncSender<RequestInfo>,
+    rx_response: Receiver<OutputContent>,
 }
 
 impl Game {
     pub fn new(
         board: Box<dyn Board>,
         snake: Snake,
-        api_providers: HashMap<Provider, Box<dyn ApiClient>>,
+        tx_request: SyncSender<RequestInfo>,
+        rx_response: Receiver<OutputContent>,
     ) -> Self {
         Self {
             board,
@@ -48,8 +51,9 @@ impl Game {
             client: None,
             commands: Vec::new(),
             game_state: GameState::NotStarted,
-            api_providers,
             game_mod: GameMod::Player,
+            tx_request,
+            rx_response,
         }
     }
 
@@ -79,6 +83,7 @@ impl Game {
                 GameState::NotStarted => {
                     if user_command.is_some() {
                         self.game_state = GameState::Running;
+                        self.board.render_game(&self.snake, &self.food, self.score);
                         continue;
                     }
                     self.board.render_start_screen();
@@ -121,6 +126,14 @@ impl Game {
                 }
                 GameMod::Api(_provider) => {
                     if matches!(self.game_state, GameState::Running) {
+                        let output = self.rx_response.try_recv();
+                        if let Ok(output) = output {
+                            for c in output.commands {
+                                for _ in 0..c.repeat {
+                                    self.commands.push(c.command.clone());
+                                }
+                            }
+                        }
                         if self.commands.len() == 0 {
                             self.do_commands_request(self.snake.get_head())
                         }
@@ -150,7 +163,7 @@ impl Game {
                     self.game_mod = GameMod::Player;
                 }
                 Command::SelectingModeCommand(GameMod::Api(provider)) => {
-                    self.game_state = GameState::Running;
+                    self.game_state = GameState::NotStarted;
                     self.board.update_mode(UIMode::GameWithDebug);
                     self.game_mod = GameMod::Api(provider.clone());
                     self.client = Some(provider.clone());
@@ -178,43 +191,33 @@ impl Game {
     fn new_game(&mut self) {
         self.snake.reset();
         self.commands.clear();
+        self.score = 0;
 
+        self.board.render_game(&self.snake, &self.food, self.score);
         let (width, height) = self.board.get_size();
         self.snake
             .set_head(Point::new_center(width as i32, height as i32));
 
         self.food = Point::new_random(width as i32, height as i32);
-        self.score = 0;
     }
 
     fn do_commands_request(&mut self, s_head: Point) {
-        let food = self.food.clone();
-        if let Some(provider) = &self.client {
-            if let Some(client) = self.api_providers.get_mut(&provider) {
-                let commands = client.snake_commands(client::models::InputContent {
-                    snake_head_x: s_head.x,
-                    snake_head_y: s_head.y,
-                    food_x: food.x,
-                    food_y: food.y,
-                });
+        if let Some(client) = self.client.clone() {
+            let food = self.food.clone();
+            let input = client::models::InputContent {
+                snake_head_x: s_head.x,
+                snake_head_y: s_head.y,
+                food_x: food.x,
+                food_y: food.y,
+            };
 
+            let req_info = models::RequestInfo {
+                provider: client,
+                input: input,
+            };
 
-
-                let res = match commands {
-                    Ok(res) => {
-                        info!("{:?}", res);
-                        res
-                    }
-                    Err(e) => {
-                        warn!("{}", e);
-                        return;
-                    }
-                };
-                for c in res.commands {
-                    for _ in 0..c.repeat {
-                        self.commands.push(c.command.clone());
-                    }
-                }
+            if let Ok(_) = self.tx_request.try_send(req_info) {
+                info!("Sending request...")
             }
         }
     }

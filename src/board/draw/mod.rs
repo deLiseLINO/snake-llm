@@ -1,23 +1,24 @@
 mod snake_shape;
 use self::snake_shape::SnakeShape;
 
-use std::rc::Rc;
+use std::{rc::Rc, vec};
 
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Stylize},
     symbols::{self, Marker},
-    text::{Line, Text},
+    text::Line,
     widgets::{
         canvas::{Canvas, Points},
         Block, Borders, Paragraph, Widget,
     },
     Frame,
 };
+use strum::IntoEnumIterator;
 use tui_logger::{TuiLoggerLevelOutput, TuiLoggerWidget};
 
 use crate::{
-    models::{GameState, Point, UIMode},
+    models::{self, GameState, Point, UIMode},
     snake::Snake,
 };
 
@@ -39,8 +40,20 @@ pub fn ui(
         UIMode::SelectingMode => {
             let main_layout = main_layout(frame);
 
+            let mut content = vec![Line::from("Select game mode:").bold()];
+            content.push(Line::from("1. Player mode"));
+
+            for (i, provider) in models::Provider::iter()
+                .enumerate()
+                .map(|(i, v)| (i + 2, v))
+            {
+                let line = format!("{}. {}", i, provider);
+
+                content.push(Line::from(line));
+            }
+
             frame.render_widget(Block::bordered().title("Snake game"), main_layout[0]);
-            let paragraph = Paragraph::new(Text::raw("Select game mode")).centered();
+            let paragraph = Paragraph::new(content).centered();
             let area = centered_rect(60, 20, main_layout[0]);
             frame.render_widget(paragraph, area);
         }
@@ -204,7 +217,7 @@ fn new_size_board(main_layout: &Rect, board_size: (&mut u16, &mut u16)) -> (u16,
 
 fn terminal_size_to_board_size(terminal_size: (u16, u16)) -> (u16, u16) {
     (
-        // - 1 cos of the borders
+        // - 2 cos of the borders
         (terminal_size.0 - 2) as u16,
         ((terminal_size.1 - 2) * 2) as u16,
     )

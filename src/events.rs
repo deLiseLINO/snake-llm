@@ -13,7 +13,7 @@ pub enum Command {
 }
 
 pub fn get_command() -> Option<Command> {
-    let wait_for = time::Duration::from_millis(15);
+    let wait_for = time::Duration::from_millis(30);
     let key_event = wait_for_key_event(wait_for)?;
     match key_event.code {
         event::KeyCode::Up => Some(Command::Turn(Direction::Up)),
@@ -25,6 +25,7 @@ pub fn get_command() -> Option<Command> {
 
         // Selecting mode
         event::KeyCode::Char('1') => Some(Command::SelectingModeCommand(GameMod::Player)),
+
         event::KeyCode::Char('2') => {
             Some(Command::SelectingModeCommand(GameMod::Api(Provider::Groq)))
         }

@@ -10,7 +10,7 @@ pub enum GameMod {
     Api(Provider),
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, EnumIter, Display)]
 pub enum Provider {
     Groq,
     Ollama,
@@ -20,6 +20,11 @@ pub enum GameState {
     Running,
     NotStarted,
     GameOver,
+}
+
+pub struct RequestInfo {
+    pub provider: Provider,
+    pub input: InputContent,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -53,6 +58,9 @@ impl Direction {
 
 use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
+use strum::{Display, EnumIter};
+
+use crate::client::models::InputContent;
 
 #[derive(Clone, Debug)]
 pub struct Point {

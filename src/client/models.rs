@@ -13,10 +13,33 @@ If food_y is greater than snake_head_y, move up: {"commands": [{"command": "up",
 If food_y is less than snake_head_y, move down: {"commands": [{"command": "down", "repeat": snake_head_y - food_y}]}
 If food_x is greater than snake_head_x, move right: {"commands": [{"command": "right", "repeat": food_x - snake_head_x}]}
 If food_x is less than snake_head_x, move left: {"commands": [{"command": "left", "repeat": snake_head_x - food_x}]}
+Don't confuse the direction!
 Don't answer anything except json. You are controlling the snake, not the food.
 Just calculate the right distance between the snake and the food and give commands.
 For example if food_y is 41, and snake_head_y is 20, snake needs to go up 21 times.
 Remember: Your goal is to make "snake_head_x" equal to "food_x" and "snake_head_y" equal to "food_y"."#;
+
+// pub static SYSTEM_PROMPT: &str = r#"
+// Input: Take coordinates of the snake head and food in JSON format: {"snake_head_x": int, "snake_head_y": int, "food_x": int, "food_y": int}
+// Goal: Make the snake head reach the food by giving commands always in JSON format: {"commands": [{"command": string, "repeat": int}]}
+// Don't add words to output, output shoud only JSON, that very important
+
+// use this func to generate commands
+// def calculate_commands(snake_head_x, snake_head_y, food_x, food_y):
+//     commands = []
+//     if food_x > snake_head_x:
+//         commands.append({"command": "right", "repeat": food_x - snake_head_x})
+//     elif food_x < snake_head_x:
+//         commands.append({"command": "left", "repeat": snake_head_x - food_x})
+//     if food_y > snake_head_y:
+//         commands.append({"command": "up", "repeat": food_y - snake_head_y})
+//     elif food_y < snake_head_y:
+//         commands.append({"command": "down", "repeat": snake_head_y - food_y})
+//     return {"commands": commands}".
+//     Don't answer anything except json. You are controlling the snake, not the food.
+// Just calculate the right distance between the snake and the food and give commands.
+// For example if food_y is 41, and snake_head_y is 20, snake needs to go up 21 times.
+// Remember: Your goal is to make "snake_head_x" equal to "food_x" and "snake_head_y" equal to "food_y"."#;
 
 #[allow(dead_code)]
 pub enum Role {

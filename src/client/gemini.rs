@@ -7,61 +7,44 @@ use reqwest::{
 use serde_derive::{Deserialize, Serialize};
 
 use super::{
-    models::{self, InputContent, Message, OutputContent, Role, SYSTEM_PROMPT},
+    models::{self, InputContent, OutputContent, Role, SYSTEM_PROMPT},
     ApiClient,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
-struct OllamaRequest {
+struct GeminiRequest {
     model: String,
     messages: Vec<models::Message>,
     stream: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct OllamaResponse {
+struct GeminiResponse {
     message: models::Message,
 }
 
-pub struct OllamaClient {
+pub struct GeminiClient {
     client: Client,
     url: String,
-    request: OllamaRequest,
+    token: String,
+    request: GeminiRequest,
 }
 
-#[allow(dead_code)]
-pub enum OllamaModels {
-    Llama3,
-    DeepseekCoder7b,
-    Openhermes,
-    Openchat,
-}
-
-impl OllamaModels {
-    pub fn as_string(&self) -> String {
-        match self {
-            OllamaModels::Llama3 => "llama3".to_owned(),
-            OllamaModels::DeepseekCoder7b => "deepseek-coder:6.7b".to_owned(),
-            OllamaModels::Openhermes => "openhermes".to_owned(),
-            OllamaModels::Openchat => "openchat".to_owned(),
-        }
-    }
-}
-
-impl ApiClient for OllamaClient {
+impl ApiClient for GeminiClient {
     fn snake_commands(&mut self, input: InputContent) -> Result<OutputContent, String> {
         self.snake_commands(input)
     }
 }
 
-impl OllamaClient {
-    pub fn new(url: String) -> Self {
+impl GeminiClient {
+    pub fn new(url: String, token: String) -> Self {
         Self {
             client: Client::new(),
             url,
-            request: OllamaRequest {
-                model: OllamaModels::Llama3.as_string(),
-                messages: vec![Message {
+            token,
+            request: GeminiRequest {
+                model: "gemini-1.5-pro".to_owned(),
+                messages: vec![models::Message {
                     role: Role::System.as_string(),
                     content: SYSTEM_PROMPT.to_string(),
                 }],
@@ -93,7 +76,7 @@ impl OllamaClient {
             Err(e) => return Err(format!("Failed to get response body: {}", e)),
         };
 
-        let resp: Option<OllamaResponse> = match serde_json::from_str(&resp_body) {
+        let resp: Option<GeminiResponse> = match serde_json::from_str(&resp_body) {
             Ok(r) => r,
             Err(e) => {
                 return Err(format!("Failed to parse response body {}", e));

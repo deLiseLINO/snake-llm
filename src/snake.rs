@@ -45,7 +45,7 @@ impl Snake {
             return;
         }
 
-        if self.list.len() > 20 {
+        if self.list.len() > 2 {
             self.list.pop_back();
         }
     }

@@ -29,18 +29,18 @@ pub struct GroqClient {
 }
 
 #[allow(dead_code)]
-pub enum Models {
-    Llama3_70b,
+pub enum GroqModels {
+    Llama3b70,
     LLama3b8,
     Mixtrel8b,
 }
 
-impl Models {
+impl GroqModels {
     pub fn as_string(&self) -> String {
         match self {
-            Models::LLama3b8 => "llama3-8b-8192".to_owned(),
-            Models::Llama3_70b => "llama3-70b-8192".to_owned(),
-            Models::Mixtrel8b => "Mixtral-8x7b-32768".to_owned(),
+            GroqModels::LLama3b8 => "llama3-8b-8192".to_owned(),
+            GroqModels::Llama3b70 => "llama3-70b-8192".to_owned(),
+            GroqModels::Mixtrel8b => "Mixtral-8x7b-32768".to_owned(),
         }
     }
 }
@@ -57,7 +57,7 @@ impl GroqClient {
             client: Client::new(),
             url,
             token,
-            request: default_request(Models::Llama3_70b),
+            request: default_request(GroqModels::Llama3b70),
         }
     }
 
@@ -122,7 +122,7 @@ impl GroqClient {
     }
 }
 
-fn default_request(model: Models) -> GroqRequest {
+fn default_request(model: GroqModels) -> GroqRequest {
     GroqRequest {
         temperature: 1.0,
         messages: vec![Message {
