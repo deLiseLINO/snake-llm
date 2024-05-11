@@ -6,8 +6,8 @@ use serde_derive::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Config {
-    pub groq_client: TokenClient,
-    pub ollama_client: Client,
+    pub groq_client: Option<TokenClient>,
+    pub ollama_client: Option<Client>,
 }
 
 #[derive(Deserialize)]

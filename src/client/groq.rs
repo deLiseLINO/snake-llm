@@ -140,6 +140,7 @@ mod tests {
 
     use crate::{
         client::models::{Commands, InputContent, OutputContent},
+        config,
         models::Direction,
     };
 
@@ -328,11 +329,11 @@ mod tests {
 )]
 
     fn test_groq(#[case] input: InputContent, #[case] expected_output: OutputContent) {
-        use crate::{client::groq::GroqClient, config};
+        use super::GroqClient;
 
-        let config = config::parse();
-        let mut client = GroqClient::new(config.groq_client.url, config.groq_client.token);
-        // let mut client = OllamaClient::new(config.ollama_client.url);
+        let groq_cfg = get_client_cfg();
+
+        let mut client = GroqClient::new(groq_cfg.url, groq_cfg.token);
         let res = client.snake_commands(input);
 
         if let Ok(res) = res {
@@ -343,6 +344,15 @@ mod tests {
             assert_eq!(res_commands, expected_commands);
         } else {
             panic!("Error: {:?}", res);
+        }
+    }
+
+    fn get_client_cfg() -> config::TokenClient {
+        let config = crate::config::parse();
+        if let Some(client_cfg) = config.groq_client {
+            client_cfg
+        } else {
+            panic!("Failed to get groq client config");
         }
     }
 }
