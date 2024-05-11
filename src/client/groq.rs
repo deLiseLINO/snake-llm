@@ -73,7 +73,6 @@ impl GroqClient {
         let status = resp.status();
 
         if status != StatusCode::OK {
-            if status == StatusCode::TOO_MANY_REQUESTS {}
             return Err(format!("Request failed with status: {}", status));
         }
 
@@ -136,7 +135,6 @@ fn default_request(model: Models) -> GroqRequest {
 
 #[cfg(test)]
 mod tests {
-    use std::{thread, time::Duration};
 
     use rstest::*;
 
@@ -334,6 +332,7 @@ mod tests {
 
         let config = config::parse();
         let mut client = GroqClient::new(config.groq_client.url, config.groq_client.token);
+        // let mut client = OllamaClient::new(config.ollama_client.url);
         let res = client.snake_commands(input);
 
         if let Ok(res) = res {

@@ -6,6 +6,7 @@ use self::models::OutputContent;
 
 pub mod groq;
 pub mod models;
+pub mod ollama;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct GroqRequest {

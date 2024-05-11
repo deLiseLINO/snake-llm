@@ -13,6 +13,7 @@ pub enum GameMod {
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub enum Provider {
     Groq,
+    Ollama,
 }
 
 pub enum GameState {

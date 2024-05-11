@@ -28,6 +28,9 @@ pub fn get_command() -> Option<Command> {
         event::KeyCode::Char('2') => {
             Some(Command::SelectingModeCommand(GameMod::Api(Provider::Groq)))
         }
+        event::KeyCode::Char('3') => Some(Command::SelectingModeCommand(GameMod::Api(
+            Provider::Ollama,
+        ))),
         _ => Some(Command::AnyKey),
     }
 }
