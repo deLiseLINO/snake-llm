@@ -5,7 +5,7 @@ use std::{rc::Rc, vec};
 
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Stylize},
+    style::{Color, Style, Stylize},
     symbols::{self, Marker},
     text::Line,
     widgets::{
@@ -48,7 +48,6 @@ pub fn ui(
                 .map(|(i, v)| (i + 2, v))
             {
                 let line = format!("{}. {}", i, provider);
-
                 content.push(Line::from(line));
             }
 
@@ -90,7 +89,9 @@ fn render_game_state(
     score_layout: Rect,
 ) {
     let new_size = new_size_board(&canvas_layout, board_size);
-    let mut content = vec![Line::from("Press any key to start or 'q' to quit".bold())];
+    let mut content = vec![Line::from("Press any key to start".bold())];
+    content.push(Line::from("'q' to quit".bold()));
+    content.push(Line::from("'m' to change mode".bold()));
 
     match game_state {
         GameState::Running => {
@@ -127,7 +128,7 @@ fn render_game_with_debug(
     let main_layout = main_layout(frame);
     let game_and_debug_layout = Layout::new(
         Direction::Horizontal,
-        [Constraint::Min(0), Constraint::Length(100)],
+        [Constraint::Percentage(50), Constraint::Min(50)],
     )
     .split(main_layout[0]);
 
@@ -147,7 +148,12 @@ fn render_game_with_debug(
         .output_target(false)
         .output_timestamp(None)
         .output_file(false)
-        .output_line(false);
+        .output_line(false)
+        .style_error(Style::default().fg(Color::Red))
+        .style_debug(Style::default().fg(Color::Green))
+        .style_warn(Style::default().fg(Color::Yellow))
+        .style_trace(Style::default().fg(Color::Magenta))
+        .style_info(Style::default().fg(Color::White));
 
     frame.render_widget(log, game_and_debug_layout[1]);
 }

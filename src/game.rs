@@ -78,7 +78,6 @@ impl Game {
                 continue;
             }
 
-            let mut growing = false;
             match self.game_state {
                 GameState::NotStarted => {
                     if user_command.is_some() {
@@ -94,10 +93,10 @@ impl Game {
                         continue;
                     };
 
-                    growing = self.is_food_eaten();
-                    if growing {
+                    if self.is_food_eaten() {
                         self.change_food_position();
                         self.increment_score();
+                        self.snake.grow();
                     }
                     self.board.render_game(&self.snake, &self.food, self.score);
                 }
@@ -148,7 +147,7 @@ impl Game {
             }
 
             if matches!(self.game_state, GameState::Running) {
-                self.snake.moving(growing);
+                self.snake.moving();
             }
         }
         self.board.clean_up();

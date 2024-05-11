@@ -10,7 +10,7 @@ use config::Config;
 use models::{Provider, RequestInfo};
 
 use log::*;
-use std::{collections::HashMap, sync::mpsc, thread};
+use std::{collections::HashMap, sync::mpsc, thread, time::Duration};
 use tui_logger::init_logger;
 
 use snake::Snake;
@@ -45,14 +45,23 @@ fn main() {
 
                     match commands {
                         Ok(res) => {
-                            info!("{:?}", res);
+                            info!("{:?}", res.commands);
                             tx_response.send(res).unwrap();
                         }
                         Err(e) => {
-                            warn!("{}", e);
+                            error!("{} \n waiting for 10 sec", e);
+                            thread::sleep(Duration::from_secs(10))
                         }
                     };
+                } else {
+                    error!(
+                        "No config for provider: {:?} \n Please provide config to config.yaml file",
+                        &req_info.provider.to_string()
+                    );
+                    thread::sleep(Duration::from_secs(60));
                 }
+            } else {
+                break;
             }
         }
     });

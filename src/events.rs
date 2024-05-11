@@ -23,6 +23,7 @@ pub fn get_command() -> Option<Command> {
         event::KeyCode::Char('q') => Some(Command::Quit),
         event::KeyCode::Char('m') => Some(Command::SelectMode),
 
+        // todo: dynamicly events based on providers enum
         // Selecting mode
         event::KeyCode::Char('1') => Some(Command::SelectingModeCommand(GameMod::Player)),
 

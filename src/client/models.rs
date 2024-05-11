@@ -3,8 +3,6 @@ use core::str;
 
 use serde_derive::{Deserialize, Serialize};
 
-// pub static SYSTEM_PROMPT: &str = "You take coordinates of the snake head, coordinates of the food in JSON format: { \"snake_head_x\": int, \"snake_head_y\": int, \"food_x\": int, \"food_y\": int, }. 0, 0 is the coorinates of left bottom corner. Your goal is to make snake_x = food_x and snake_y = food_y. You should give commands to the snake in JSON format: { \"commands\": [ {\"command\": string, \"repeat\": int} ] }. remember that \"up\" is snake_y += 1, \"down\" is snake_y -= 1. also remember that \"left\" is snake_x -= 1 \"right\" is snake_x += 1";
-
 pub static SYSTEM_PROMPT: &str = r#"
 Input: Take coordinates of the snake head and food in JSON format: {"snake_head_x": int, "snake_head_y": int, "food_x": int, "food_y": int}
 Goal: Make the snake head reach the food by giving commands always in JSON format: {"commands": [{"command": string, "repeat": int}]}
@@ -18,28 +16,6 @@ Don't answer anything except json. You are controlling the snake, not the food.
 Just calculate the right distance between the snake and the food and give commands.
 For example if food_y is 41, and snake_head_y is 20, snake needs to go up 21 times.
 Remember: Your goal is to make "snake_head_x" equal to "food_x" and "snake_head_y" equal to "food_y"."#;
-
-// pub static SYSTEM_PROMPT: &str = r#"
-// Input: Take coordinates of the snake head and food in JSON format: {"snake_head_x": int, "snake_head_y": int, "food_x": int, "food_y": int}
-// Goal: Make the snake head reach the food by giving commands always in JSON format: {"commands": [{"command": string, "repeat": int}]}
-// Don't add words to output, output shoud only JSON, that very important
-
-// use this func to generate commands
-// def calculate_commands(snake_head_x, snake_head_y, food_x, food_y):
-//     commands = []
-//     if food_x > snake_head_x:
-//         commands.append({"command": "right", "repeat": food_x - snake_head_x})
-//     elif food_x < snake_head_x:
-//         commands.append({"command": "left", "repeat": snake_head_x - food_x})
-//     if food_y > snake_head_y:
-//         commands.append({"command": "up", "repeat": food_y - snake_head_y})
-//     elif food_y < snake_head_y:
-//         commands.append({"command": "down", "repeat": snake_head_y - food_y})
-//     return {"commands": commands}".
-//     Don't answer anything except json. You are controlling the snake, not the food.
-// Just calculate the right distance between the snake and the food and give commands.
-// For example if food_y is 41, and snake_head_y is 20, snake needs to go up 21 times.
-// Remember: Your goal is to make "snake_head_x" equal to "food_x" and "snake_head_y" equal to "food_y"."#;
 
 #[allow(dead_code)]
 pub enum Role {
@@ -71,18 +47,11 @@ pub struct Message {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InputContent {
-    // pub snake_direction: String,
     pub snake_head_x: i32,
     pub snake_head_y: i32,
     pub food_x: i32,
     pub food_y: i32,
 }
-
-// pub struct InputContent {
-//     // pub snake_direction: String,
-//     pub snake: (i32, i32),
-//     pub food: (i32, i32),
-// }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct OutputContent {

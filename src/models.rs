@@ -45,15 +45,6 @@ impl Direction {
             Direction::Right => Direction::Left,
         }
     }
-
-    pub fn _as_string(&self) -> String {
-        match self {
-            Direction::Up => String::from("up"),
-            Direction::Down => String::from("down"),
-            Direction::Left => String::from("left"),
-            Direction::Right => String::from("right"),
-        }
-    }
 }
 
 use rand::Rng;

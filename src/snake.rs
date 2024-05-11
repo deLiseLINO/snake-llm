@@ -8,6 +8,7 @@ use crate::models::{Direction, Point};
 pub struct Snake {
     list: LinkedList<Point>,
     direction: Direction,
+    length: usize,
 }
 
 impl Snake {
@@ -20,6 +21,7 @@ impl Snake {
                 2 => Direction::Left,
                 _ => Direction::Right,
             },
+            length: 2,
         }
     }
 
@@ -27,7 +29,7 @@ impl Snake {
         self.list.push_front(point);
     }
 
-    pub fn moving(&mut self, growing: bool) {
+    pub fn moving(&mut self) {
         let front = self.list.front().unwrap();
         let mut new_x = front.x;
         let mut new_y = front.y;
@@ -41,13 +43,13 @@ impl Snake {
 
         self.list.push_front(new_point);
 
-        if growing {
-            return;
-        }
-
-        if self.list.len() > 2 {
+        if self.list.len() > self.length {
             self.list.pop_back();
         }
+    }
+
+    pub fn grow(&mut self) {
+        self.length += 1;
     }
 
     pub fn change_direction(&mut self, direction: Direction) {
@@ -64,11 +66,8 @@ impl Snake {
         self.list.front().unwrap().clone()
     }
 
-    pub fn _get_direction(&mut self) -> Direction {
-        self.direction.clone()
-    }
-
     pub fn reset(&mut self) {
         self.list.clear();
+        self.length = 2;
     }
 }
