@@ -35,6 +35,10 @@ pub enum OllamaModels {
     DeepseekCoder7b,
     Openhermes,
     Openchat,
+    Yi,
+    Yi9b,
+    YiBase,
+    Llama3q2,
 }
 
 impl OllamaModels {
@@ -44,6 +48,10 @@ impl OllamaModels {
             OllamaModels::DeepseekCoder7b => "deepseek-coder:6.7b".to_owned(),
             OllamaModels::Openhermes => "openhermes".to_owned(),
             OllamaModels::Openchat => "openchat".to_owned(),
+            OllamaModels::Yi => "yi".to_owned(),
+            OllamaModels::Yi9b => "yi:9b-chat-v1.5-q5_0".to_owned(),
+            OllamaModels::YiBase => "yi:6b-v1.5-q4_K_S".to_owned(),
+            OllamaModels::Llama3q2 => "llama3:8b-instruct-q2_K".to_owned(),
         }
     }
 }
@@ -60,7 +68,7 @@ impl OllamaClient {
             client: Client::new(),
             url,
             request: OllamaRequest {
-                model: OllamaModels::Llama3.as_string(),
+                model: OllamaModels::Llama3q2.as_string(),
                 messages: vec![Message {
                     role: Role::System.as_string(),
                     content: SYSTEM_PROMPT.to_string(),
@@ -71,6 +79,9 @@ impl OllamaClient {
     }
 
     pub fn snake_commands(&mut self, input: InputContent) -> Result<OutputContent, String> {
+        if self.request.messages.len() > 1 {
+            self.request.messages.pop();
+        }
         self.request.messages.push(models::Message {
             role: Role::User.as_string(),
             content: serde_json::to_string(&input).unwrap(),
@@ -101,12 +112,13 @@ impl OllamaClient {
         };
 
         if let Some(resp) = resp {
-            let _res: OutputContent = match serde_json::from_str(&resp.message.content) {
+            let json = extract_json(&resp.message.content);
+            let _res: OutputContent = match serde_json::from_str(&json) {
                 Ok(res) => return Ok(res),
                 Err(e) => {
                     return Err(format!(
-                        "Failed to parse messages body: {}, response: {:?}",
-                        e, resp.message.content
+                        "Failed to parse messages body: {}, response: {}",
+                        e, json
                     ));
                 }
             };
@@ -118,9 +130,16 @@ impl OllamaClient {
     fn post(&self, url: &str, body: String) -> Response {
         self.client
             .post(url)
-            .timeout(Duration::from_secs(120))
+            .timeout(Duration::from_secs(60 * 10))
             .body(body)
             .send()
             .unwrap()
     }
+}
+
+fn extract_json(input: &str) -> String {
+    let start_idx = input.find('{').unwrap_or(input.len());
+    let end_idx = input.rfind('}').unwrap_or(input.len());
+    let extracted = input[start_idx..end_idx + 1].to_string();
+    extracted
 }
