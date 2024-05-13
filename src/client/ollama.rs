@@ -42,7 +42,7 @@ pub enum OllamaModels {
 }
 
 impl OllamaModels {
-    pub fn as_string(&self) -> String {
+    pub fn _as_string(&self) -> String {
         match self {
             OllamaModels::Llama3 => "llama3".to_owned(),
             OllamaModels::DeepseekCoder7b => "deepseek-coder:6.7b".to_owned(),
@@ -68,7 +68,7 @@ impl OllamaClient {
             client: Client::new(),
             url,
             request: OllamaRequest {
-                model: OllamaModels::Llama3q2.as_string(),
+                model: "yi:9b-chat-v1.5-q4_0".to_string(),
                 messages: vec![Message {
                     role: Role::System.as_string(),
                     content: SYSTEM_PROMPT.to_string(),

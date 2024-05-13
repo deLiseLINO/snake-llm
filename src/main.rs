@@ -13,6 +13,9 @@ use log::*;
 use std::{collections::HashMap, sync::mpsc, thread, time::Duration};
 use tui_logger::init_logger;
 
+#[allow(unused_imports)]
+use rstest_reuse;
+
 use snake::Snake;
 
 use crate::board::BoardTUI;
@@ -49,8 +52,8 @@ fn main() {
                             tx_response.send(res).unwrap();
                         }
                         Err(e) => {
-                            error!("{} \n waiting for 10 sec", e);
-                            thread::sleep(Duration::from_secs(10))
+                            error!("{} \n waiting for 5 sec", e);
+                            thread::sleep(Duration::from_secs(5))
                         }
                     };
                 } else {

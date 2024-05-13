@@ -14,6 +14,7 @@ pub trait ApiClient {
 mod tests {
 
     use rstest::*;
+    use rstest_reuse::{self, *};
 
     use crate::{
         client::models::{Commands, InputContent, OutputContent},
@@ -21,6 +22,7 @@ mod tests {
         models::Direction,
     };
 
+    #[template]
     #[rstest]
     #[case(
     InputContent {
@@ -205,10 +207,13 @@ mod tests {
     },
 )]
 
+    fn test_client(#[case] input: InputContent, #[case] expected_output: OutputContent) {}
+
+    #[apply(test_client)]
     fn test_groq(#[case] input: InputContent, #[case] expected_output: OutputContent) {
         use super::groq::GroqClient;
 
-        let groq_cfg = get_client_cfg();
+        let groq_cfg = get_groqclient_cfg();
 
         let mut client = GroqClient::new(groq_cfg.url, groq_cfg.token);
         let res = client.snake_commands(input);
@@ -224,12 +229,41 @@ mod tests {
         }
     }
 
-    fn get_client_cfg() -> config::TokenClient {
+    fn get_groqclient_cfg() -> config::TokenClient {
         let config = crate::config::parse();
         if let Some(client_cfg) = config.groq_client {
             client_cfg
         } else {
             panic!("Failed to get groq client config");
+        }
+    }
+
+    #[apply(test_client)]
+    fn test_ollama(#[case] input: InputContent, #[case] expected_output: OutputContent) {
+        use super::ollama::OllamaClient;
+
+        let get_ollama_cfg = get_ollama_cfg();
+
+        let mut client = OllamaClient::new(get_ollama_cfg.url);
+        let res = client.snake_commands(input);
+
+        if let Ok(res) = res {
+            let mut expected_commands = expected_output.commands;
+            let mut res_commands = res.commands;
+            expected_commands.sort();
+            res_commands.sort();
+            assert_eq!(res_commands, expected_commands);
+        } else {
+            panic!("Error: {:?}", res);
+        }
+    }
+
+    fn get_ollama_cfg() -> config::Client {
+        let config = crate::config::parse();
+        if let Some(client_cfg) = config.ollama_client {
+            client_cfg
+        } else {
+            panic!("Failed to get ollama client config");
         }
     }
 }
