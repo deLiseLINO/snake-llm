@@ -35,6 +35,7 @@ groq_client:
 
 ollama_client:
   url: http://localhost:11434/api/chat
+  model: llama3
 ```
 
 Groq api key can be found [here](https://console.groq.com/keys)

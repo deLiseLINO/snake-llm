@@ -19,6 +19,7 @@ pub struct TokenClient {
 #[derive(Deserialize)]
 pub struct Client {
     pub url: String,
+    pub model: String,
 }
 
 pub fn parse() -> Config {

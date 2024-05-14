@@ -29,33 +29,6 @@ pub struct OllamaClient {
     request: OllamaRequest,
 }
 
-#[allow(dead_code)]
-pub enum OllamaModels {
-    Llama3,
-    DeepseekCoder7b,
-    Openhermes,
-    Openchat,
-    Yi,
-    Yi9b,
-    YiBase,
-    Llama3q2,
-}
-
-impl OllamaModels {
-    pub fn _as_string(&self) -> String {
-        match self {
-            OllamaModels::Llama3 => "llama3".to_owned(),
-            OllamaModels::DeepseekCoder7b => "deepseek-coder:6.7b".to_owned(),
-            OllamaModels::Openhermes => "openhermes".to_owned(),
-            OllamaModels::Openchat => "openchat".to_owned(),
-            OllamaModels::Yi => "yi".to_owned(),
-            OllamaModels::Yi9b => "yi:9b-chat-v1.5-q5_0".to_owned(),
-            OllamaModels::YiBase => "yi:6b-v1.5-q4_K_S".to_owned(),
-            OllamaModels::Llama3q2 => "llama3:8b-instruct-q2_K".to_owned(),
-        }
-    }
-}
-
 impl ApiClient for OllamaClient {
     fn snake_commands(&mut self, input: InputContent) -> Result<OutputContent, String> {
         self.snake_commands(input)
@@ -63,12 +36,12 @@ impl ApiClient for OllamaClient {
 }
 
 impl OllamaClient {
-    pub fn new(url: String) -> Self {
+    pub fn new(url: String, model: String) -> Self {
         Self {
             client: Client::new(),
             url,
             request: OllamaRequest {
-                model: "yi:9b-chat-v1.5-q4_0".to_string(),
+                model: model,
                 messages: vec![Message {
                     role: Role::System.as_string(),
                     content: SYSTEM_PROMPT.to_string(),

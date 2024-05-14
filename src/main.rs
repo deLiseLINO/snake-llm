@@ -88,7 +88,7 @@ fn fill_clients_map(clients: &mut HashMap<Provider, Box<dyn ApiClient>>, config:
     if let Some(cfg) = &config.ollama_client {
         clients.insert(
             Provider::Ollama,
-            Box::new(client::ollama::OllamaClient::new(cfg.url.clone())),
+            Box::new(client::ollama::OllamaClient::new(cfg.url.clone(), cfg.model.clone())),
         );
     }
 }

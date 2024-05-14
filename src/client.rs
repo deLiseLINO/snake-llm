@@ -88,20 +88,20 @@ mod tests {
 )]
     #[case(
     InputContent {
-        snake_head_x: 5,
-        snake_head_y: 7,
-        food_x: 20,
-        food_y: 20,
+        snake_head_x: 13,
+        snake_head_y: 2,
+        food_x: 71,
+        food_y: 11,
     },
     OutputContent {
         commands: vec![
             Commands {
                 command: Direction::Right,
-                repeat: 15,
+                repeat: 58,
             },
             Commands {
                 command: Direction::Up,
-                repeat: 13,
+                repeat: 9,
             },
         ],
     },
@@ -242,9 +242,9 @@ mod tests {
     fn test_ollama(#[case] input: InputContent, #[case] expected_output: OutputContent) {
         use super::ollama::OllamaClient;
 
-        let get_ollama_cfg = get_ollama_cfg();
+        let ollama_cfg = get_ollama_cfg();
 
-        let mut client = OllamaClient::new(get_ollama_cfg.url);
+        let mut client = OllamaClient::new(ollama_cfg.url, ollama_cfg.model);
         let res = client.snake_commands(input);
 
         if let Ok(res) = res {
